@@ -1,0 +1,309 @@
+
+/* Reset básico */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f7f6;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* Container principal */
+.container {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+h1, h2, h3 {
+  color: #2c3e50;
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+p {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #555;
+}
+
+/* Logo */
+.logo {
+  width: 150px;  
+  height: 150px; 
+  margin: 20px auto; 
+  background-image: url('/images/infomaissaudelogo.png');
+  background-size: contain;     
+  background-position: center;  
+  background-repeat: no-repeat; 
+}
+
+/* Formulários */
+input[type="text"],
+textarea {
+  width: calc(100% - 20px);
+  padding: 12px 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease-in-out;
+}
+
+input[type="text"]:focus,
+textarea:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+button {
+  background-color: #28a745;
+  color: white;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: bold;
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+button:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Navegação */
+nav {
+  background-color: #2c3e50;
+  padding: 15px 0;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.nav-button {
+  background-color: transparent;
+  color: #ecf0f1;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0 20px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  width: auto; /* Sobrescreve o 100% */
+  border: 2px solid transparent;
+}
+
+.nav-button:hover {
+  background-color: #34495e;
+  transform: none; /* Sem subir */
+}
+
+.nav-button.active {
+  background-color: #34495e;
+  border-bottom: 2px solid #3498db;
+}
+
+/* Página Home (RAG) */
+#ragForm textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+#ragSubmitBtn {
+    margin-top: 10px;
+}
+
+.resposta {
+  background-color: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: 6px;
+  padding: 20px;
+  margin-top: 30px;
+}
+
+.resposta h3 {
+  color: #388e3c;
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.resposta pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: monospace;
+  font-size: 1.1em;
+  color: #455a64;
+}
+
+/* Página Admin */
+.form-container {
+  background-color: #f0f4f7;
+  border: 1px solid #dbe2e8;
+  border-radius: 8px;
+  padding: 25px;
+  margin-bottom: 40px;
+}
+
+.form-container button {
+  background-color: #007bff;
+}
+
+.form-container button:hover {
+  background-color: #0056b3;
+}
+
+.lista-container h3 {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.lista-container ul {
+  list-style: none;
+  padding: 0;
+}
+
+.lista-container li {
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 18px 25px;
+  margin-bottom: 15px;
+  position: relative; 
+}
+
+.lista-container li strong {
+  display: block;
+  font-size: 1.25em;
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+
+.lista-container li p,
+.lista-container li small {
+  text-align: left;
+  margin: 0;
+  color: #555;
+}
+
+.delete-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background-color: #e74c3c; 
+    width: auto;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+/* ============================================= */
+/* ESTILOS DA MODAL DE EDIÇÃO           */
+/* ============================================= */
+
+/* O fundo escurecido (overlay) */
+.modal-overlay {
+  position: fixed; /* Fica fixo na tela */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Preto com 60% de opacidade */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Garante que fique na frente de tudo */
+}
+
+/* O conteúdo da modal (a caixa branca) */
+.modal-content {
+  background-color: #ffffff;
+  padding: 30px 40px;
+  border-radius: 8px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 600px;
+  position: relative;
+  z-index: 1001;
+}
+
+/* O botão de fechar 'X' */
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 30px;
+  color: #aaa;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+/* Estilos do formulário dentro da modal */
+#editForm label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #555;
+  text-align: left;
+}
+
+#editForm input[disabled] {
+    background-color: #eee;
+    color: #777;
+    cursor: not-allowed;
+}
+
+#editSubmitBtn {
+    background-color: #007bff; /* Azul para "Update" */
+    margin-top: 15px;
+}
+#editSubmitBtn:hover {
+    background-color: #0056b3;
+}
+
+
+/* ============================================= */
+/* ESTILOS DO BOTÃO DE EDITAR           */
+/* ============================================= */
+
+/* Botão de Editar (caneta) */
+.edit-btn {
+  position: absolute;
+  top: 15px;
+  right: 60px; /* Posição ao lado do botão delete */
+  background-color: #f0ad4e; /* Laranja/Amarelo */
+  color: white;
+  width: auto;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: bold;
+}
+.edit-btn:hover {
+  background-color: #ec971f;
+}
+
+/* Ajusta o botão de delete para dar espaço */
+.delete-btn {
+  right: 15px;
+}

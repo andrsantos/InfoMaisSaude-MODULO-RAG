@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Info+Saúde RAG</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav>
+        <button id="navHome" class="nav-button active">Home (Triagem)</button>
+        <button id="navAdmin" class="nav-button">Admin (Cadastrar)</button>
+    </nav>
+
+    <main id="pageHome" class="container">
+        <h1>Info+Saúde - Triagem de Sintomas</h1>
+        <p>Descreva seus sintomas abaixo e a IA recomendará um especialista.</p>
+        <div class="logo"></div>
+        
+        <form id="ragForm">
+            <textarea id="sintomasInput" rows="5" placeholder="Ex: Estou com febre e dor no corpo..."></textarea>
+            <button id="ragSubmitBtn" type="submit">Obter Recomendação</button>
+        </form>
+
+        <div id="ragResult" class="resposta" style="display: none;">
+            <h3>Recomendação da IA:</h3>
+            <pre id="ragResponseText"></pre>
+        </div>
+    </main>
+
+    <main id="pageAdmin" class="container" style="display: none;">
+        <h1>Painel de Administração</h1>
+        
+        <div class="form-container">
+            <h3>Adicionar Nova Especialidade</h3>
+            <form id="adminForm">
+                <input type="text" id="adminNome" placeholder="Nome da Especialidade" required>
+                <input type="text" id="adminDescricao" placeholder="Descrição" required>
+                <textarea id="adminSintomas" rows="3" placeholder="Sintomas (separados por vírgula)" required></textarea>
+                <button id="adminSubmitBtn" type="submit">Salvar e Reindexar</button>
+            </form>
+        </div>
+
+        <div class="lista-container">
+            <h3>Especialidades Cadastradas</h3>
+            <ul id="especialidadesLista">
+                <li style="text-align: center;">Carregando...</li>
+            </ul>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+    <div id="editModalOverlay" class="modal-overlay" style="display: none;">
+        <div id="editModal" class="modal-content">
+            
+            <span id="closeModalBtn" class="modal-close">&times;</span>
+            
+            <h2>Editar Especialidade</h2>
+            
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                
+                <div>
+                    <label for="editNome">Nome da Especialidade (não pode ser editado)</label>
+                    <input type="text" id="editNome" disabled> </div>
+
+                <div>
+                    <label for="editDescricao">Descrição</label>
+                    <textarea id="editDescricao" rows="4" required></textarea>
+                </div>
+
+                <div>
+                    <label for="editSintomas">Sintomas Comuns</label>
+                    <textarea id="editSintomas" rows="4" required></textarea>
+                </div>
+
+                <button id="editSubmitBtn" type="submit">Salvar Alterações e Reindexar</button>
+            </form>
+
+        </div>
+    </div>
+</body>
+</html>
