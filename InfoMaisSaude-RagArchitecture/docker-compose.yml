@@ -28,6 +28,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: andreysantos12
       META_WEBHOOK_VERIFY_TOKEN: "infomaissaudesecrettoken"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      META_API_TOKEN: ${META_API_TOKEN}
 
     depends_on:
       - db
