@@ -1,20 +1,29 @@
-
 package com.RagArchitecture.InfoMaisSaude.controllers;
+
 import com.RagArchitecture.InfoMaisSaude.services.RAGQueryService;
+import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayload;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import com.RagArchitecture.InfoMaisSaude.dtos.*; 
+import org.springframework.web.client.RestTemplate; 
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/webhook") 
+@RequestMapping("/webhook")
 public class WhatsAppWebhookController {
 
-    @Value("${meta.webhook.verify-token}") 
+    @Value("${meta.webhook.verify-token}")
     private String VERIFY_TOKEN;
+
+    @Value("${meta.api.token}")
+    private String META_API_TOKEN;
+
+    @Value("${meta.api.phone-number-id}")
+    private String META_PHONE_ID;
 
     @Autowired
     private RAGQueryService ragQueryService;
@@ -28,40 +37,66 @@ public class WhatsAppWebhookController {
         System.out.println("GET /webhook - Verificação recebida.");
 
         if ("subscribe".equals(mode) && VERIFY_TOKEN.equals(token)) {
-            System.out.println("Verificação bem-sucedida. Respondendo com challenge.");
             return ResponseEntity.ok(challenge);
         } else {
-            System.out.println("Falha na verificação. Tokens não batem.");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Falha na verificação");
         }
     }
 
-
     @PostMapping
     public ResponseEntity<Void> handleWebhookNotification(@RequestBody WhatsAppPayload payload) {
-
-        System.out.println("POST /webhook - Mensagem recebida: " + payload);
+        System.out.println("POST /webhook - Payload recebido.");
 
         try {
             Optional<String> userText = extractUserText(payload);
             Optional<String> userPhone = extractUserPhone(payload);
 
             if (userText.isPresent() && userPhone.isPresent()) {
-                String texto = userText.get();
-                String numero = userPhone.get();
-                System.out.println("Mensagem de " + numero + ": " + texto);
-                String recomendacao = ragQueryService.obterRecomendacao(texto);
-                System.out.println("Resposta RAG: " + recomendacao);
-                System.out.println("TODO: Enviar esta resposta para " + numero + " via Graph API");
+                String textoRecebido = userText.get();
+                String numeroUsuario = userPhone.get();
 
+                System.out.println("Mensagem de " + numeroUsuario + ": " + textoRecebido);
+
+                String respostaIA = ragQueryService.obterRecomendacao(textoRecebido);
+                System.out.println("Resposta gerada pelo RAG: " + respostaIA);
+
+                enviarRespostaWhatsApp(numeroUsuario, respostaIA);
             }
+
         } catch (Exception e) {
-            System.out.println("Erro ao processar webhook: " + e.getMessage());
+            System.err.println("Erro ao processar mensagem: " + e.getMessage());
+            e.printStackTrace();
         }
 
         return ResponseEntity.ok().build();
     }
-    
+
+    private void enviarRespostaWhatsApp(String destinatario, String textoMensagem) {
+        String url = "https://graph.facebook.com/v19.0/" + META_PHONE_ID + "/messages";
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("messaging_product", "whatsapp");
+        body.put("to", destinatario);
+
+        Map<String, String> textObj = new HashMap<>();
+        textObj.put("body", textoMensagem);
+        body.put("text", textObj);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(META_API_TOKEN); 
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Mensagem enviada com sucesso! Status: " + response.getStatusCode());
+        } catch (Exception e) {
+            System.err.println("FALHA ao enviar mensagem no WhatsApp: " + e.getMessage());
+        }
+    }
+
     private Optional<String> extractUserText(WhatsAppPayload payload) {
         try {
             return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].text().body());
@@ -71,7 +106,7 @@ public class WhatsAppWebhookController {
     }
 
     private Optional<String> extractUserPhone(WhatsAppPayload payload) {
-         try {
+        try {
             return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
         } catch (Exception e) {
             return Optional.empty();
