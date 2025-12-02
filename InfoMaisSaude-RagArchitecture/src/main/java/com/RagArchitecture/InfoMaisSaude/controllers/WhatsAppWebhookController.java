@@ -44,39 +44,49 @@ public class WhatsAppWebhookController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> handleWebhookNotification(@RequestBody WhatsAppPayload payload) {
-        System.out.println("POST /webhook - Payload recebido.");
-
+    public ResponseEntity<Void> handleWebhookNotification(@RequestBody Map<String, Object> rawPayload) {
         try {
-            Optional<String> userText = extractUserText(payload);
-            Optional<String> userPhone = extractUserPhone(payload);
-
-            if (userText.isPresent() && userPhone.isPresent()) {
-                String textoRecebido = userText.get();
-                String numeroUsuario = userPhone.get();
-
-                System.out.println("Mensagem original de " + numeroUsuario + ": " + textoRecebido);
-
-                if (numeroUsuario.startsWith("55") && numeroUsuario.length() == 12) {
-                    String ddd = numeroUsuario.substring(0, 4); 
-                    String numero = numeroUsuario.substring(4); 
-                    
-                    numeroUsuario = ddd + "9" + numero; 
-                    System.out.println("Número corrigido para envio (com 9): " + numeroUsuario);
-                }
-
-                String respostaIA = ragQueryService.obterRecomendacao(textoRecebido);
-                System.out.println("Resposta gerada pelo RAG: " + respostaIA);
-
-                enviarRespostaWhatsApp(numeroUsuario, respostaIA);
+            System.out.println("--- DEBUG PAYLOAD RECEBIDO ---");
+            System.out.println(rawPayload.toString()); 
+            
+            if (rawPayload.toString().contains("statuses")) {
+                System.out.println("⚠️ ALERTA: Recebemos um status de entrega (possível erro)!");
+                return ResponseEntity.ok().build(); 
             }
+            processarMensagem(rawPayload);
 
         } catch (Exception e) {
-            System.err.println("Erro ao processar mensagem: " + e.getMessage());
+            System.err.println("Erro geral no webhook: " + e.getMessage());
             e.printStackTrace();
         }
 
         return ResponseEntity.ok().build();
+    }
+
+    private void processarMensagem(Map<String, Object> payload) {
+        try {
+            var entry = ((java.util.List<Map<String, Object>>) payload.get("entry")).get(0);
+            var changes = ((java.util.List<Map<String, Object>>) entry.get("changes")).get(0);
+            var value = (Map<String, Object>) changes.get("value");
+            
+            if (!value.containsKey("messages")) return; // Não é mensagem
+
+            var messages = (java.util.List<Map<String, Object>>) value.get("messages");
+            var contacts = (java.util.List<Map<String, Object>>) value.get("contacts");
+            
+            String texto = (String) ((Map<String, Object>) messages.get(0).get("text")).get("body");
+            
+            String waId = (String) contacts.get(0).get("wa_id");
+
+            System.out.println("Mensagem: " + texto);
+            System.out.println("ID Oficial para Resposta (wa_id): " + waId);
+
+            String respostaIA = ragQueryService.obterRecomendacao(texto);
+            enviarRespostaWhatsApp(waId, respostaIA); 
+
+        } catch (Exception e) {
+            System.out.println("Não foi possível processar como mensagem de texto simples.");
+        }
     }
 
    private void enviarRespostaWhatsApp(String destinatario, String textoMensagem) {
