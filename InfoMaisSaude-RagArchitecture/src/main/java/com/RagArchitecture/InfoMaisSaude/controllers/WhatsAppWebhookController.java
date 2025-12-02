@@ -22,7 +22,7 @@ public class WhatsAppWebhookController {
     @Value("${meta.api.token}")
     private String META_API_TOKEN;
 
-    @Value("${meta.phone.id}") 
+    @Value("${meta.api.phone-number-id}") 
     private String META_PHONE_ID;
 
     @Autowired
