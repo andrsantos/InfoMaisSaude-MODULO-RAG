@@ -79,16 +79,23 @@ public class WhatsAppWebhookController {
         return ResponseEntity.ok().build();
     }
 
-    private void enviarRespostaWhatsApp(String destinatario, String textoMensagem) {
+   private void enviarRespostaWhatsApp(String destinatario, String textoMensagem) {
         String url = "https://graph.facebook.com/v19.0/" + META_PHONE_ID + "/messages";
 
         Map<String, Object> body = new HashMap<>();
         body.put("messaging_product", "whatsapp");
         body.put("to", destinatario);
-
-        Map<String, String> textObj = new HashMap<>();
-        textObj.put("body", textoMensagem);
-        body.put("text", textObj);
+        
+        body.put("type", "template");
+        
+        Map<String, Object> templateObj = new HashMap<>();
+        templateObj.put("name", "hello_world");
+        
+        Map<String, String> languageObj = new HashMap<>();
+        languageObj.put("code", "en_US"); 
+        
+        templateObj.put("language", languageObj);
+        body.put("template", templateObj);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -99,7 +106,7 @@ public class WhatsAppWebhookController {
 
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Mensagem enviada com sucesso! Status: " + response.getStatusCode());
+            System.out.println("Template enviado! Status: " + response.getStatusCode());
         } catch (Exception e) {
             System.err.println("FALHA ao enviar mensagem no WhatsApp: " + e.getMessage());
         }
