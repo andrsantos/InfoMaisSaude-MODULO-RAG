@@ -63,32 +63,37 @@ public class WhatsAppWebhookController {
         return ResponseEntity.ok().build();
     }
 
-    private void processarMensagem(Map<String, Object> payload) {
+   private void processarMensagem(Map<String, Object> payload) {
         try {
             var entry = ((java.util.List<Map<String, Object>>) payload.get("entry")).get(0);
             var changes = ((java.util.List<Map<String, Object>>) entry.get("changes")).get(0);
             var value = (Map<String, Object>) changes.get("value");
             
-            if (!value.containsKey("messages")) return; // Não é mensagem
+            if (!value.containsKey("messages")) return;
 
             var messages = (java.util.List<Map<String, Object>>) value.get("messages");
             var contacts = (java.util.List<Map<String, Object>>) value.get("contacts");
             
             String texto = (String) ((Map<String, Object>) messages.get(0).get("text")).get("body");
-            
-            String waId = (String) contacts.get(0).get("wa_id");
+            String waId = (String) contacts.get(0).get("wa_id"); // Vem 55918...
 
-            System.out.println("Mensagem: " + texto);
-            System.out.println("ID Oficial para Resposta (wa_id): " + waId);
+            System.out.println("Recebido wa_id: " + waId);
+
+            if (waId.startsWith("55") && waId.length() == 12) {
+                String ddd = waId.substring(0, 4); // 5591
+                String resto = waId.substring(4);  // 86052737
+                waId = ddd + "9" + resto;          // 5591986052737
+                System.out.println("Corrigido para envio (Meta Test): " + waId);
+            }
 
             String respostaIA = ragQueryService.obterRecomendacao(texto);
-            enviarRespostaWhatsApp(waId, respostaIA); 
+            enviarRespostaWhatsApp(waId, respostaIA);
 
         } catch (Exception e) {
-            System.out.println("Não foi possível processar como mensagem de texto simples.");
+            System.out.println("Erro ao processar mensagem de texto: " + e.getMessage());
+            e.printStackTrace();
         }
     }
-
    private void enviarRespostaWhatsApp(String destinatario, String textoMensagem) {
         String url = "https://graph.facebook.com/v19.0/" + META_PHONE_ID + "/messages";
 
