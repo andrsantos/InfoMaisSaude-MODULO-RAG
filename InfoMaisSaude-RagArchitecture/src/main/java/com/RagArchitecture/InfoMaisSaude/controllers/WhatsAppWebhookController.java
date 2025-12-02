@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate; 
+import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +22,7 @@ public class WhatsAppWebhookController {
     @Value("${meta.api.token}")
     private String META_API_TOKEN;
 
-    @Value("${meta.api.phone-number-id}")
+    @Value("${meta.phone.id}") 
     private String META_PHONE_ID;
 
     @Autowired
@@ -55,7 +55,15 @@ public class WhatsAppWebhookController {
                 String textoRecebido = userText.get();
                 String numeroUsuario = userPhone.get();
 
-                System.out.println("Mensagem de " + numeroUsuario + ": " + textoRecebido);
+                System.out.println("Mensagem original de " + numeroUsuario + ": " + textoRecebido);
+
+                if (numeroUsuario.startsWith("55") && numeroUsuario.length() == 12) {
+                    String ddd = numeroUsuario.substring(0, 4); 
+                    String numero = numeroUsuario.substring(4); 
+                    
+                    numeroUsuario = ddd + "9" + numero; 
+                    System.out.println("Número corrigido para envio (com 9): " + numeroUsuario);
+                }
 
                 String respostaIA = ragQueryService.obterRecomendacao(textoRecebido);
                 System.out.println("Resposta gerada pelo RAG: " + respostaIA);
@@ -84,7 +92,7 @@ public class WhatsAppWebhookController {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(META_API_TOKEN); 
+        headers.setBearerAuth(META_API_TOKEN);
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
