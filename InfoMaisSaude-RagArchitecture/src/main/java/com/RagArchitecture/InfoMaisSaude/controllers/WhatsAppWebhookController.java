@@ -33,44 +33,62 @@ public class WhatsAppWebhookController {
             System.out.println(payload.toString());
 
             String eventType = (String) payload.get("event");
-            if (!"messages.upsert".equals(eventType)) {
-                return ResponseEntity.ok().build(); 
-            }
+            if (!"messages.upsert".equals(eventType)) return ResponseEntity.ok().build();
 
             Map<String, Object> data = (Map<String, Object>) payload.get("data");
             Map<String, Object> key = (Map<String, Object>) data.get("key");
             
             Boolean fromMe = (Boolean) key.get("fromMe");
-            if (fromMe != null && fromMe) {
-                return ResponseEntity.ok().build();
-            }
+            if (fromMe != null && fromMe) return ResponseEntity.ok().build();
 
-            String idParaEnvio = (String) key.get("remoteJid");
-            
-            if (idParaEnvio == null) {
-                idParaEnvio = (String) key.get("participant");
-            }
-
-            System.out.println("ID Escolhido para Resposta: " + idParaEnvio);
+            String remoteJid = (String) key.get("remoteJid");
             
             Map<String, Object> message = (Map<String, Object>) data.get("message");
             String userText = extractText(message);
 
             if (userText != null && !userText.isEmpty()) {
-                System.out.println("Mensagem recebida: " + userText);
+                System.out.println("Recebido de " + remoteJid + ": " + userText);
 
                 String respostaIA = ragQueryService.obterRecomendacao(userText);
-                System.out.println("Resposta RAG: " + respostaIA);
-
-                enviarRespostaEvolution(idParaEnvio, respostaIA);
+                
+                enviarRespostaComCitacao(remoteJid, respostaIA, data);
             }
 
         } catch (Exception e) {
-            System.err.println("Erro ao processar mensagem: " + e.getMessage());
             e.printStackTrace();
         }
-
         return ResponseEntity.ok().build();
+    }
+
+    private void enviarRespostaComCitacao(String remoteJid, String texto, Map<String, Object> messageData) {
+        String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
+
+        String numeroFinal = remoteJid;
+        if (remoteJid.endsWith("@s.whatsapp.net")) {
+            numeroFinal = remoteJid.replace("@s.whatsapp.net", "");
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("number", numeroFinal);
+        body.put("text", texto);
+        
+        if (messageData != null) {
+            body.put("quoted", messageData);
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", EVOLUTION_KEY);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+
+        try {
+            restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Resposta enviada (citada) para: " + numeroFinal);
+        } catch (Exception e) {
+            System.err.println("Erro ao enviar: " + e.getMessage());
+        }
     }
 
     private String extractText(Map<String, Object> message) {
