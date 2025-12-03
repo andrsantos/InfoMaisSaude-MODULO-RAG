@@ -26,10 +26,10 @@ public class WhatsAppWebhookController {
     @Autowired
     private RAGQueryService ragQueryService;
 
-    @PostMapping
+   @PostMapping
     public ResponseEntity<Void> handleEvolutionWebhook(@RequestBody Map<String, Object> payload) {
         try {
-            System.out.println("--- DEBUG PAYLOAD RECEBIDO ---");
+            System.out.println("--- DEBUG PAYLOAD ---");
             System.out.println(payload.toString());
 
             String eventType = (String) payload.get("event");
@@ -45,21 +45,19 @@ public class WhatsAppWebhookController {
                 return ResponseEntity.ok().build();
             }
 
-            String remoteJid = (String) key.get("remoteJid");
-            String participant = (String) key.get("participant");
+            String idParaEnvio = (String) payload.get("sender");
 
-            String idParaEnvio = remoteJid;
-
-            if (remoteJid != null && remoteJid.contains("@lid") && participant != null) {
-                System.out.println("⚠️ Detectado ID oculto (@lid). Trocando remoteJid pelo participant: " + participant);
-                idParaEnvio = participant;
+            if (idParaEnvio == null) {
+                idParaEnvio = (String) key.get("remoteJid");
             }
+            
+            System.out.println("ID Escolhido para Resposta: " + idParaEnvio);
             
             Map<String, Object> message = (Map<String, Object>) data.get("message");
             String userText = extractText(message);
 
             if (userText != null && !userText.isEmpty()) {
-                System.out.println("Mensagem de " + idParaEnvio + ": " + userText);
+                System.out.println("Mensagem recebida: " + userText);
 
                 String respostaIA = ragQueryService.obterRecomendacao(userText);
                 System.out.println("Resposta RAG: " + respostaIA);
