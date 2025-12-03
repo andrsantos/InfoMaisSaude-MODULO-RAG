@@ -45,12 +45,12 @@ public class WhatsAppWebhookController {
                 return ResponseEntity.ok().build();
             }
 
-            String idParaEnvio = (String) payload.get("sender");
-
-            if (idParaEnvio == null) {
-                idParaEnvio = (String) key.get("remoteJid");
-            }
+            String idParaEnvio = (String) key.get("remoteJid");
             
+            if (idParaEnvio == null) {
+                idParaEnvio = (String) key.get("participant");
+            }
+
             System.out.println("ID Escolhido para Resposta: " + idParaEnvio);
             
             Map<String, Object> message = (Map<String, Object>) data.get("message");
@@ -89,11 +89,14 @@ public class WhatsAppWebhookController {
     private void enviarRespostaEvolution(String remoteJid, String texto) {
         String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
 
-        String numeroLimpo = remoteJid.replace("@s.whatsapp.net", "")
-                                      .replace("@lid", ""); 
+        String numeroFinal = remoteJid;
+        
+        if (remoteJid.endsWith("@s.whatsapp.net")) {
+            numeroFinal = remoteJid.replace("@s.whatsapp.net", "");
+        }
 
         Map<String, Object> body = new HashMap<>();
-        body.put("number", numeroLimpo);
+        body.put("number", numeroFinal);
         body.put("text", texto);
 
         HttpHeaders headers = new HttpHeaders();
@@ -105,7 +108,7 @@ public class WhatsAppWebhookController {
 
         try {
             restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Resposta enviada via Evolution para: " + numeroLimpo);
+            System.out.println("Resposta enviada via Evolution para: " + numeroFinal);
         } catch (Exception e) {
             System.err.println("Erro ao enviar pela Evolution: " + e.getMessage());
         }
