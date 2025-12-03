@@ -29,6 +29,9 @@ public class WhatsAppWebhookController {
     @PostMapping
     public ResponseEntity<Void> handleEvolutionWebhook(@RequestBody Map<String, Object> payload) {
         try {
+            System.out.println("--- DEBUG PAYLOAD RECEBIDO ---");
+            System.out.println(payload.toString());
+
             String eventType = (String) payload.get("event");
             if (!"messages.upsert".equals(eventType)) {
                 return ResponseEntity.ok().build(); 
@@ -42,18 +45,26 @@ public class WhatsAppWebhookController {
                 return ResponseEntity.ok().build();
             }
 
-            String remoteJid = (String) key.get("remoteJid"); 
+            String remoteJid = (String) key.get("remoteJid");
+            String participant = (String) key.get("participant");
+
+            String idParaEnvio = remoteJid;
+
+            if (remoteJid != null && remoteJid.contains("@lid") && participant != null) {
+                System.out.println("⚠️ Detectado ID oculto (@lid). Trocando remoteJid pelo participant: " + participant);
+                idParaEnvio = participant;
+            }
             
             Map<String, Object> message = (Map<String, Object>) data.get("message");
             String userText = extractText(message);
 
             if (userText != null && !userText.isEmpty()) {
-                System.out.println("Mensagem de " + remoteJid + ": " + userText);
+                System.out.println("Mensagem de " + idParaEnvio + ": " + userText);
 
                 String respostaIA = ragQueryService.obterRecomendacao(userText);
                 System.out.println("Resposta RAG: " + respostaIA);
 
-                enviarRespostaEvolution(remoteJid, respostaIA);
+                enviarRespostaEvolution(idParaEnvio, respostaIA);
             }
 
         } catch (Exception e) {
@@ -80,7 +91,8 @@ public class WhatsAppWebhookController {
     private void enviarRespostaEvolution(String remoteJid, String texto) {
         String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
 
-        String numeroLimpo = remoteJid.replace("@s.whatsapp.net", "");
+        String numeroLimpo = remoteJid.replace("@s.whatsapp.net", "")
+                                      .replace("@lid", ""); 
 
         Map<String, Object> body = new HashMap<>();
         body.put("number", numeroLimpo);
