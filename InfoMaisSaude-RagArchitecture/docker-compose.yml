@@ -9,40 +9,55 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: andreysantos12
       POSTGRES_DB: InfoMaisSaude-RagArchitecture
-    ports:      
-      # Lado Esquerdo: Porta na Nuvem (Acesso externo)
-      # Lado Direito: Porta do Container (Onde o banco vive)
+    ports:
       - "5432:5432"
     volumes:
       - ./pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  evolution:
+    image: atendai/evolution-api:v2.1.1
+    container_name: evolution-api
+    restart: always
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./evolution_store:/evolution/store
+    environment:
+      SERVER_URL: http://localhost:8081
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      LOG_LEVEL: error 
+      DEL_INSTANCE: "false"
 
   app:
     build: .
     container_name: infomaissaude-backend-rag
     restart: always
     environment:
-      # O Java conecta internamente na 5432 (porta do container)
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/InfoMaisSaude-RagArchitecture
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: andreysantos12
-      META_WEBHOOK_VERIFY_TOKEN: "infomaissaudesecrettoken"
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      META_API_TOKEN: ${META_API_TOKEN}
-
+      
+      EVOLUTION_API_URL: http://evolution:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+      
     depends_on:
       - db
+      - evolution 
+
   caddy:
     image: caddy:latest
     container_name: caddy-https
     restart: always
     ports:
-    - "80:80"
-    - "443:443"
+      - "80:80"
+      - "443:443"
     volumes:
-    - ./Caddyfile:/etc/caddy/Caddyfile
-    - caddy_data:/data
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
     depends_on:
-    - app
+      - app
+
 volumes:
   caddy_data:

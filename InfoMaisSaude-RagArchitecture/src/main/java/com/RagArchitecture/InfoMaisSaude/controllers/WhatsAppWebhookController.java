@@ -1,7 +1,6 @@
 package com.RagArchitecture.InfoMaisSaude.controllers;
 
 import com.RagArchitecture.InfoMaisSaude.services.RAGQueryService;
-import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayload;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -10,136 +9,95 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/webhook")
 public class WhatsAppWebhookController {
 
-    @Value("${meta.webhook.verify-token}")
-    private String VERIFY_TOKEN;
+    @Value("${evolution.api.url}")
+    private String EVOLUTION_URL;
 
-    @Value("${meta.api.token}")
-    private String META_API_TOKEN;
+    @Value("${evolution.api.key}")
+    private String EVOLUTION_KEY;
 
-    @Value("${meta.api.phone-number-id}") 
-    private String META_PHONE_ID;
+    @Value("${evolution.instance.name}")
+    private String INSTANCE_NAME;
 
     @Autowired
     private RAGQueryService ragQueryService;
 
-    @GetMapping
-    public ResponseEntity<String> verifyWebhook(
-            @RequestParam("hub.mode") String mode,
-            @RequestParam("hub.verify_token") String token,
-            @RequestParam("hub.challenge") String challenge) {
-
-        System.out.println("GET /webhook - Verificação recebida.");
-
-        if ("subscribe".equals(mode) && VERIFY_TOKEN.equals(token)) {
-            return ResponseEntity.ok(challenge);
-        } else {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Falha na verificação");
-        }
-    }
-
     @PostMapping
-    public ResponseEntity<Void> handleWebhookNotification(@RequestBody Map<String, Object> rawPayload) {
+    public ResponseEntity<Void> handleEvolutionWebhook(@RequestBody Map<String, Object> payload) {
         try {
-            System.out.println("--- DEBUG PAYLOAD RECEBIDO ---");
-            System.out.println(rawPayload.toString()); 
-            
-            if (rawPayload.toString().contains("statuses")) {
-                System.out.println("⚠️ ALERTA: Recebemos um status de entrega (possível erro)!");
+            String eventType = (String) payload.get("event");
+            if (!"messages.upsert".equals(eventType)) {
                 return ResponseEntity.ok().build(); 
             }
-            processarMensagem(rawPayload);
+
+            Map<String, Object> data = (Map<String, Object>) payload.get("data");
+            Map<String, Object> key = (Map<String, Object>) data.get("key");
+            
+            Boolean fromMe = (Boolean) key.get("fromMe");
+            if (fromMe != null && fromMe) {
+                return ResponseEntity.ok().build();
+            }
+
+            String remoteJid = (String) key.get("remoteJid"); 
+            
+            Map<String, Object> message = (Map<String, Object>) data.get("message");
+            String userText = extractText(message);
+
+            if (userText != null && !userText.isEmpty()) {
+                System.out.println("Mensagem de " + remoteJid + ": " + userText);
+
+                String respostaIA = ragQueryService.obterRecomendacao(userText);
+                System.out.println("Resposta RAG: " + respostaIA);
+
+                enviarRespostaEvolution(remoteJid, respostaIA);
+            }
 
         } catch (Exception e) {
-            System.err.println("Erro geral no webhook: " + e.getMessage());
+            System.err.println("Erro ao processar mensagem: " + e.getMessage());
             e.printStackTrace();
         }
 
         return ResponseEntity.ok().build();
     }
 
-   private void processarMensagem(Map<String, Object> payload) {
-        try {
-            var entry = ((java.util.List<Map<String, Object>>) payload.get("entry")).get(0);
-            var changes = ((java.util.List<Map<String, Object>>) entry.get("changes")).get(0);
-            var value = (Map<String, Object>) changes.get("value");
-            
-            if (!value.containsKey("messages")) return;
-
-            var messages = (java.util.List<Map<String, Object>>) value.get("messages");
-            var contacts = (java.util.List<Map<String, Object>>) value.get("contacts");
-            
-            String texto = (String) ((Map<String, Object>) messages.get(0).get("text")).get("body");
-            String waId = (String) contacts.get(0).get("wa_id"); // Vem 55918...
-
-            System.out.println("Recebido wa_id: " + waId);
-
-            if (waId.startsWith("55") && waId.length() == 12) {
-                String ddd = waId.substring(0, 4); // 5591
-                String resto = waId.substring(4);  // 86052737
-                waId = ddd + "9" + resto;          // 5591986052737
-                System.out.println("Corrigido para envio (Meta Test): " + waId);
-            }
-
-            String respostaIA = ragQueryService.obterRecomendacao(texto);
-            enviarRespostaWhatsApp(waId, respostaIA);
-
-        } catch (Exception e) {
-            System.out.println("Erro ao processar mensagem de texto: " + e.getMessage());
-            e.printStackTrace();
+    private String extractText(Map<String, Object> message) {
+        if (message == null) return null;
+        
+        if (message.containsKey("conversation")) {
+            return (String) message.get("conversation");
         }
+        if (message.containsKey("extendedTextMessage")) {
+            Map<String, Object> extended = (Map<String, Object>) message.get("extendedTextMessage");
+            return (String) extended.get("text");
+        }
+        return null; 
     }
-   private void enviarRespostaWhatsApp(String destinatario, String textoMensagem) {
-        String url = "https://graph.facebook.com/v19.0/" + META_PHONE_ID + "/messages";
+
+    private void enviarRespostaEvolution(String remoteJid, String texto) {
+        String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
+
+        String numeroLimpo = remoteJid.replace("@s.whatsapp.net", "");
 
         Map<String, Object> body = new HashMap<>();
-        body.put("messaging_product", "whatsapp");
-        body.put("to", destinatario);
-        
-        body.put("type", "template");
-        
-        Map<String, Object> templateObj = new HashMap<>();
-        templateObj.put("name", "hello_world");
-        
-        Map<String, String> languageObj = new HashMap<>();
-        languageObj.put("code", "en_US"); 
-        
-        templateObj.put("language", languageObj);
-        body.put("template", templateObj);
+        body.put("number", numeroLimpo);
+        body.put("text", texto);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(META_API_TOKEN);
+        headers.set("apikey", EVOLUTION_KEY); 
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
 
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Template enviado! Status: " + response.getStatusCode());
+            restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Resposta enviada via Evolution para: " + numeroLimpo);
         } catch (Exception e) {
-            System.err.println("FALHA ao enviar mensagem no WhatsApp: " + e.getMessage());
-        }
-    }
-
-    private Optional<String> extractUserText(WhatsAppPayload payload) {
-        try {
-            return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].text().body());
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
-
-    private Optional<String> extractUserPhone(WhatsAppPayload payload) {
-        try {
-            return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
-        } catch (Exception e) {
-            return Optional.empty();
+            System.err.println("Erro ao enviar pela Evolution: " + e.getMessage());
         }
     }
 }
