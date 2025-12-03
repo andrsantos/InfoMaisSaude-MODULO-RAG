@@ -44,7 +44,7 @@ services:
       
       LOG_LEVEL: error 
       DEL_INSTANCE: "false"
-      CONFIG_SESSION_PHONE_VERSION: "2.3000.1023204200"
+      CONFIG_SESSION_PHONE_VERSION: "2.3000.1028401180"
     depends_on:
       - db
       - redis
