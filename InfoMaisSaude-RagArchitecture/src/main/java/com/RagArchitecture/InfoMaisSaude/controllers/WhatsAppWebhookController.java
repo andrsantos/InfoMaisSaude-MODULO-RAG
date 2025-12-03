@@ -89,14 +89,16 @@ public class WhatsAppWebhookController {
     private void enviarRespostaEvolution(String remoteJid, String texto) {
         String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
 
-        String numeroFinal = remoteJid;
+        String numeroParaEnvio = remoteJid;
         
         if (remoteJid.endsWith("@s.whatsapp.net")) {
-            numeroFinal = remoteJid.replace("@s.whatsapp.net", "");
+            numeroParaEnvio = remoteJid.replace("@s.whatsapp.net", "");
         }
+        
+        System.out.println("Enviando para: " + numeroParaEnvio);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("number", numeroFinal);
+        body.put("number", numeroParaEnvio);
         body.put("text", texto);
 
         HttpHeaders headers = new HttpHeaders();
@@ -108,7 +110,7 @@ public class WhatsAppWebhookController {
 
         try {
             restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Resposta enviada via Evolution para: " + numeroFinal);
+            System.out.println("Resposta enviada com sucesso!");
         } catch (Exception e) {
             System.err.println("Erro ao enviar pela Evolution: " + e.getMessage());
         }
