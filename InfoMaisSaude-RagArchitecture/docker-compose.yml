@@ -37,7 +37,7 @@ services:
       
       DATABASE_ENABLED: "true"
       DATABASE_PROVIDER: "postgresql"
-      DATABASE_CONNECTION_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/InfoMaisSaude-RagArchitecture?schema=public"
+      DATABASE_CONNECTION_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/InfoMaisSaude-RagArchitecture?schema=evolution"
       
       CACHE_REDIS_ENABLED: "true"
       CACHE_REDIS_URI: "redis://:minha_senha_redis@redis:6379/0"
