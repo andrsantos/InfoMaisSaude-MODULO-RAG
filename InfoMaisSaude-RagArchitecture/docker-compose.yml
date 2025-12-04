@@ -16,7 +16,7 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
   wppconnect:
-    image: wppconnect/server:latest  
+    image: wppconnect-team/wppconnect-server:latest  
     container_name: wppconnect
     restart: always
     ports:
