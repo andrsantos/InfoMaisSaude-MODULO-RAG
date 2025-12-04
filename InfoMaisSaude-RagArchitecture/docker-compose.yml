@@ -16,11 +16,11 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
   wppconnect:
-    image: wppconnect/wppconnect-server:latest
+    image: wppconnect/server:latest  
     container_name: wppconnect
     restart: always
     ports:
-      - "21465:21465" 
+      - "21465:21465"
     volumes:
       - ./wpp_sessions:/usr/src/app/tokens 
     environment:
