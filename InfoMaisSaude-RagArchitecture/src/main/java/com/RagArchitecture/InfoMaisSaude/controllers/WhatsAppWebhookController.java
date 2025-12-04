@@ -40,18 +40,38 @@ public class WhatsAppWebhookController {
             if (Boolean.TRUE.equals(key.get("fromMe"))) return ResponseEntity.ok().build();
 
             String remoteJid = (String) key.get("remoteJid");
-            String pushName = (String) data.get("pushName");
+            String remoteJidAlt = (String) key.get("remoteJidAlt"); 
+            String participant = (String) key.get("participant");
             
+            String idFinal = remoteJid;
+
+            if (remoteJid != null && remoteJid.contains("@lid") && 
+                remoteJidAlt != null && remoteJidAlt.contains("@s.whatsapp.net")) {
+                
+                System.out.println("✅ LID detectado! Usando remoteJidAlt: " + remoteJidAlt);
+                idFinal = remoteJidAlt;
+                
+            } 
+            else if (remoteJid != null && remoteJid.contains("@lid") && 
+                     participant != null && participant.contains("@s.whatsapp.net")) {
+                     
+                System.out.println("✅ LID detectado! Usando participant: " + participant);
+                idFinal = participant;
+            }
+            
+            System.out.println("📍 Destino definido para envio: " + idFinal);
+
             Map<String, Object> message = (Map<String, Object>) data.get("message");
             String userText = extractText(message);
+            String pushName = (String) data.get("pushName");
 
             if (userText != null && !userText.isEmpty()) {
-                System.out.println("Mensagem de " + pushName + " (" + remoteJid + "): " + userText);
+                System.out.println("Mensagem de " + pushName + ": " + userText);
 
                 String respostaIA = ragQueryService.obterRecomendacao(userText);
-                System.out.println("RAG Respondeu. Enviando resposta citada...");
+                System.out.println("RAG Respondeu.");
 
-                enviarRespostaCitada(remoteJid, respostaIA, data);
+                enviarResposta(idFinal, respostaIA, data);
             }
 
         } catch (Exception e) {
@@ -60,22 +80,18 @@ public class WhatsAppWebhookController {
         return ResponseEntity.ok().build();
     }
 
-    private void enviarRespostaCitada(String remoteJid, String texto, Map<String, Object> messageData) {
+    private void enviarResposta(String destinatario, String texto, Map<String, Object> messageData) {
         String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("number", remoteJid); // Manda o LID direto
-        body.put("text", texto);
-        body.put("quoted", messageData);
+        String numeroLimpo = destinatario;
+        if (destinatario.endsWith("@s.whatsapp.net")) {
+            numeroLimpo = destinatario.replace("@s.whatsapp.net", "");
+        }
 
-        // --- O TRUQUE DO BYPASS ---
-        Map<String, Object> options = new HashMap<>();
-        options.put("presence", "composing");
-        options.put("linkPreview", false);
-        
-        // Em algumas versões, isso força o envio sem check
-        body.put("options", options); 
-        // --------------------------
+        Map<String, Object> body = new HashMap<>();
+        body.put("number", numeroLimpo);
+        body.put("text", texto);
+        body.put("quoted", messageData); 
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -85,13 +101,10 @@ public class WhatsAppWebhookController {
         RestTemplate restTemplate = new RestTemplate();
 
         try {
-            // Tenta enviar
             restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Sucesso enviando para LID: " + remoteJid);
+            System.out.println("🚀 Resposta enviada para: " + numeroLimpo);
         } catch (Exception e) {
-            // SE FALHAR COM LID, TENTAMOS UMA GAMBIARRA DE CONTATO
-            System.err.println("Falha no envio direto. Tentando estratégia de contato...");
-            e.printStackTrace();
+            System.err.println("❌ Erro ao enviar: " + e.getMessage());
         }
     }
 
