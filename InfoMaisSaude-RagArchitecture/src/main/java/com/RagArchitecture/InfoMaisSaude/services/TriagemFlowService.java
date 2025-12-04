@@ -43,33 +43,22 @@ public class TriagemFlowService {
                 return "Cadastro concluído! ✅\n\nAgora me conte com detalhes: **O que você está sentindo?**";
 
             case TRIAGEM_IA:
-                
                 sessao.adicionarAoHistorico("Paciente: " + textoUsuario);
                 
-                
-                if (sessao.getPerguntasFeitas() < 3) {
+                if (sessao.getPerguntasFeitas() < 5) {
                     
-                    
-                    String respostaInvestigativa = ragQueryService.analisarSintomas(sessao.getHistoricoClinico());
-                    
+                    String respostaInvestigativa = ragQueryService.analisarSintomas(
+                        sessao.getHistoricoClinico(), 
+                        sessao.getIdade(), 
+                        sessao.getSexo()
+                    );
                     
                     if (!respostaInvestigativa.toUpperCase().contains("PRONTO")) {
                         sessao.incrementarPerguntas();
                         sessao.adicionarAoHistorico("Bot: " + respostaInvestigativa);
-                        return respostaInvestigativa; 
+                        return respostaInvestigativa;
                     }
                 }
-                
-                
-                String perfilCompleto = String.format("PACIENTE: %s, %s anos, %s.\nHISTÓRICO CLÍNICO:\n%s", 
-                        sessao.getNome(), sessao.getIdade(), sessao.getSexo(), sessao.getHistoricoClinico());
-                
-                String recomendacaoFinal = ragQueryService.obterRecomendacao(perfilCompleto);
-                
-                
-                sessionService.clearSession(telefone);
-                
-                return recomendacaoFinal + "\n\n(Atendimento finalizado. Para começar de novo, mande um 'Oi')";
 
             default:
                 return "Erro no fluxo. Digite 'reset' para reiniciar.";

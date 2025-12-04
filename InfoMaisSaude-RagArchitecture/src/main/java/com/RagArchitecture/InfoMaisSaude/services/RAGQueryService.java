@@ -93,20 +93,41 @@ public class RAGQueryService {
                          .content();
     }
 
-    public String analisarSintomas(String historicoPaciente) {
+    public String analisarSintomas(String historico, String idade, String sexo) {
         String promptInvestigador = """
-            Você é um médico fazendo triagem. Analise o histórico de conversa abaixo.
+            Atue como um Enfermeiro de Triagem experiente e atencioso.
             
-            Se você já tiver informações suficientes (sintomas, duração, intensidade) para indicar uma especialidade médica com segurança:
-            Responda apenas a palavra: PRONTO
+            CONTEXTO DO PACIENTE:
+            - Idade: %s
+            - Sexo: %s
             
-            Se você precisar de mais detalhes para não errar a indicação:
-            Faça APENAS UMA pergunta curta e direta para o paciente para esclarecer o quadro.
-            (Exemplos: "Tem febre?", "Há quanto tempo sente isso?", "A dor é pontual?")
+            HISTÓRICO DA CONVERSA:
+            %s
+            
+            SEU OBJETIVO:
+            Coletar informações suficientes para uma triagem segura, aplicando o raciocínio clínico (Anamnese).
+            Não tente adivinhar a especialidade rápido demais. Investigue.
+            
+            DIRETRIZES DE INVESTIGAÇÃO (Use para QUALQUER sintoma):
+            1. CRONOLOGIA: Se não sabe há quanto tempo o sintoma existe, PERGUNTE. (Agudo vs Crônico).
+            2. CARACTERÍSTICA: Se não sabe como é a dor/sintoma (pontada, queimação, constante, intermitente), PERGUNTE.
+            3. INTENSIDADE: Se necessário, pergunte a gravidade (leve, moderada, insuportável).
+            4. ASSOCIAÇÃO: Pergunte se há outros sintomas acompanhando o principal.
+            5. HISTÓRICO: Se pertinente, pergunte se já aconteceu antes ou se o paciente tem comorbidades.
+            
+            CRITÉRIO DE PARADA (Quando responder PRONTO?):
+            - Apenas responda PRONTO quando você tiver uma "fotografia" clara do quadro clínico que permita diferenciar entre algo simples e algo grave.
+            - Se o paciente relatar sintomas de EMERGÊNCIA IMEDIATA (ex: falta de ar grave, desmaio, dor no peito intensa), pare de perguntar e responda PRONTO imediatamente para encaminhar.
+            
+            FORMATO DE RESPOSTA:
+            - Se precisar de mais dados: Faça APENAS UMA pergunta curta, clara e educada. (Um enfermeiro pergunta uma coisa de cada vez).
+            - Se já tiver certeza: Responda apenas a palavra: PRONTO
             """;
 
-        SystemMessage system = new SystemMessage(promptInvestigador);
-        UserMessage user = new UserMessage("HISTÓRICO:\n" + historicoPaciente);
+        String systemText = String.format(promptInvestigador, idade, sexo, historico);
+
+        SystemMessage system = new SystemMessage(systemText);
+        UserMessage user = new UserMessage("Analise o quadro acima e decida o próximo passo.");
 
         return chatClient.prompt(new Prompt(List.of(system, user)))
                          .call()
@@ -114,5 +135,4 @@ public class RAGQueryService {
                          .trim();
     }
 
-    
 }
