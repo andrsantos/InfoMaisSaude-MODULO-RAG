@@ -1,6 +1,7 @@
 package com.RagArchitecture.InfoMaisSaude.controllers;
 
 import com.RagArchitecture.InfoMaisSaude.services.RAGQueryService;
+import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayload;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -9,112 +10,102 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/webhook")
 public class WhatsAppWebhookController {
 
-    @Value("${evolution.api.url}")
-    private String EVOLUTION_URL;
+    @Value("${meta.webhook.verify-token}")
+    private String VERIFY_TOKEN;
 
-    @Value("${evolution.api.key}")
-    private String EVOLUTION_KEY;
+    @Value("${meta.api.token}")
+    private String META_API_TOKEN;
 
-    @Value("${evolution.instance.name}")
-    private String INSTANCE_NAME;
+    @Value("${meta.phone.id}")
+    private String META_PHONE_ID;
 
     @Autowired
     private RAGQueryService ragQueryService;
 
+    @GetMapping
+    public ResponseEntity<String> verifyWebhook(
+            @RequestParam("hub.mode") String mode,
+            @RequestParam("hub.verify_token") String token,
+            @RequestParam("hub.challenge") String challenge) {
+
+        System.out.println("Tentativa de verificação do Webhook...");
+
+        if ("subscribe".equals(mode) && VERIFY_TOKEN.equals(token)) {
+            System.out.println("Webhook verificado com sucesso!");
+            return ResponseEntity.ok(challenge);
+        } else {
+            System.err.println("Falha na verificação: Token inválido.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Falha na verificação");
+        }
+    }
+
     @PostMapping
-    public ResponseEntity<Void> handleEvolutionWebhook(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Void> handleWebhookNotification(@RequestBody WhatsAppPayload payload) {
         try {
-            System.out.println("--- PAYLOAD RECEBIDO ---");
+            Optional<String> userText = extractUserText(payload);
+            Optional<String> userPhone = extractUserPhone(payload);
 
-            String eventType = (String) payload.get("event");
-            if (!"messages.upsert".equals(eventType)) return ResponseEntity.ok().build();
-
-            Map<String, Object> data = (Map<String, Object>) payload.get("data");
-            Map<String, Object> key = (Map<String, Object>) data.get("key");
-            
-            if (Boolean.TRUE.equals(key.get("fromMe"))) return ResponseEntity.ok().build();
-
-            String remoteJid = (String) key.get("remoteJid");
-            String remoteJidAlt = (String) key.get("remoteJidAlt"); 
-            String participant = (String) key.get("participant");
-            
-            String idFinal = remoteJid;
-
-            if (remoteJid != null && remoteJid.contains("@lid") && 
-                remoteJidAlt != null && remoteJidAlt.contains("@s.whatsapp.net")) {
+            if (userText.isPresent() && userPhone.isPresent()) {
+                String texto = userText.get();
+                String numero = userPhone.get();
                 
-                System.out.println("✅ LID detectado! Usando remoteJidAlt: " + remoteJidAlt);
-                idFinal = remoteJidAlt;
+                System.out.println("Mensagem recebida de " + numero + ": " + texto);
+
+                String respostaIA = ragQueryService.obterRecomendacao(texto);
                 
-            } 
-            else if (remoteJid != null && remoteJid.contains("@lid") && 
-                     participant != null && participant.contains("@s.whatsapp.net")) {
-                     
-                System.out.println("✅ LID detectado! Usando participant: " + participant);
-                idFinal = participant;
-            }
-            
-            System.out.println("📍 Destino definido para envio: " + idFinal);
-
-            Map<String, Object> message = (Map<String, Object>) data.get("message");
-            String userText = extractText(message);
-            String pushName = (String) data.get("pushName");
-
-            if (userText != null && !userText.isEmpty()) {
-                System.out.println("Mensagem de " + pushName + ": " + userText);
-
-                String respostaIA = ragQueryService.obterRecomendacao(userText);
-                System.out.println("RAG Respondeu.");
-
-                enviarResposta(idFinal, respostaIA, data);
+                enviarRespostaWhatsApp(numero, respostaIA);
+            } else {
             }
 
         } catch (Exception e) {
+            System.err.println("Erro ao processar mensagem: " + e.getMessage());
             e.printStackTrace();
         }
+        
         return ResponseEntity.ok().build();
     }
 
-    private void enviarResposta(String destinatario, String texto, Map<String, Object> messageData) {
-        String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
-
-        String numeroLimpo = destinatario;
-        if (destinatario.endsWith("@s.whatsapp.net")) {
-            numeroLimpo = destinatario.replace("@s.whatsapp.net", "");
-        }
+    private void enviarRespostaWhatsApp(String destinatario, String textoMensagem) {
+        String url = "https://graph.facebook.com/v21.0/" + META_PHONE_ID + "/messages";
 
         Map<String, Object> body = new HashMap<>();
-        body.put("number", numeroLimpo);
-        body.put("text", texto);
-        body.put("quoted", messageData); 
+        body.put("messaging_product", "whatsapp");
+        body.put("to", destinatario);
+        
+        Map<String, String> textObj = new HashMap<>();
+        textObj.put("body", textoMensagem);
+        body.put("text", textObj);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("apikey", EVOLUTION_KEY);
+        headers.setBearerAuth(META_API_TOKEN); 
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
 
         try {
             restTemplate.postForEntity(url, request, String.class);
-            System.out.println("🚀 Resposta enviada para: " + numeroLimpo);
+            System.out.println("Resposta enviada com sucesso para: " + destinatario);
         } catch (Exception e) {
-            System.err.println("❌ Erro ao enviar: " + e.getMessage());
+            System.err.println("FALHA ao enviar mensagem na Meta: " + e.getMessage());
         }
     }
 
-    private String extractText(Map<String, Object> message) {
-        if (message == null) return null;
-        if (message.containsKey("conversation")) return (String) message.get("conversation");
-        if (message.containsKey("extendedTextMessage")) {
-            Map<String, Object> ext = (Map<String, Object>) message.get("extendedTextMessage");
-            return (String) ext.get("text");
-        }
-        return null;
+    private Optional<String> extractUserText(WhatsAppPayload payload) {
+        try {
+            return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].text().body());
+        } catch (Exception e) { return Optional.empty(); }
+    }
+
+    private Optional<String> extractUserPhone(WhatsAppPayload payload) {
+        try {
+            return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
+        } catch (Exception e) { return Optional.empty(); }
     }
 }

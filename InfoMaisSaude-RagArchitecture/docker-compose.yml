@@ -15,21 +15,6 @@ services:
       - ./pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  wppconnect:
-    image: wppconnect-team/wppconnect-server:latest  
-    container_name: wppconnect
-    restart: always
-    ports:
-      - "21465:21465"
-    volumes:
-      - ./wpp_sessions:/usr/src/app/tokens 
-    environment:
-      SERVER_PORT: 21465
-      SERVER_SECRET_KEY: minha_senha_secreta_wpp
-      WEBHOOK_URL: http://infomaissaude-backend-rag:8080/webhook
-      LOG_LEVEL: error
-      BROWSER_ARGS: "--no-sandbox --disable-setuid-sandbox"
-
   app:
     build: .
     container_name: infomaissaude-backend-rag
@@ -40,13 +25,11 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       
-      WPP_URL: http://wppconnect:21465
-      WPP_SECRET: minha_senha_secreta_wpp
-      WPP_SESSION: sessao_medica 
-      
+      META_API_TOKEN: ${META_API_TOKEN}
+      META_PHONE_ID: ${META_PHONE_ID}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN}
     depends_on:
       - db
-      - wppconnect
 
   caddy:
     image: caddy:latest
