@@ -15,39 +15,20 @@ services:
       - ./pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  redis:
-    image: redis:alpine
-    container_name: evolution-redis
-    restart: always
-    command: redis-server --appendonly yes --requirepass minha_senha_redis
-    volumes:
-      - ./redis_data:/data
-
-  evolution:
-    image: atendai/evolution-api:latest
-    container_name: evolution-api
+  wppconnect:
+    image: wppconnect/wppconnect-server:latest
+    container_name: wppconnect
     restart: always
     ports:
-      - "8081:8080"
+      - "21465:21465" 
     volumes:
-      - ./evolution_store:/evolution/store
+      - ./wpp_sessions:/usr/src/app/tokens 
     environment:
-      SERVER_URL: http://localhost:8081
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
-      
-      DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: "postgresql"
-      DATABASE_CONNECTION_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/InfoMaisSaude-RagArchitecture?schema=evolution"
-      
-      CACHE_REDIS_ENABLED: "true"
-      CACHE_REDIS_URI: "redis://:minha_senha_redis@redis:6379/0"
-      
-      LOG_LEVEL: error 
-      DEL_INSTANCE: "false"
-      CONFIG_SESSION_PHONE_VERSION: "2.3000.1028401180"
-    depends_on:
-      - db
-      - redis
+      SERVER_PORT: 21465
+      SERVER_SECRET_KEY: minha_senha_secreta_wpp
+      WEBHOOK_URL: http://infomaissaude-backend-rag:8080/webhook
+      LOG_LEVEL: error
+      BROWSER_ARGS: "--no-sandbox --disable-setuid-sandbox"
 
   app:
     build: .
@@ -59,13 +40,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       
-      EVOLUTION_API_URL: http://evolution:8080
-      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
-      EVOLUTION_INSTANCE_NAME: infomaissaudebot
+      WPP_URL: http://wppconnect:21465
+      WPP_SECRET: minha_senha_secreta_wpp
+      WPP_SESSION: sessao_medica 
       
     depends_on:
       - db
-      - evolution
+      - wppconnect
 
   caddy:
     image: caddy:latest
