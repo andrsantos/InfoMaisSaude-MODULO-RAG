@@ -26,11 +26,10 @@ public class WhatsAppWebhookController {
     @Autowired
     private RAGQueryService ragQueryService;
 
-   @PostMapping
+    @PostMapping
     public ResponseEntity<Void> handleEvolutionWebhook(@RequestBody Map<String, Object> payload) {
         try {
-            System.out.println("--- DEBUG PAYLOAD ---");
-            System.out.println(payload.toString());
+            System.out.println("--- PAYLOAD RECEBIDO ---");
 
             String eventType = (String) payload.get("event");
             if (!"messages.upsert".equals(eventType)) return ResponseEntity.ok().build();
@@ -38,20 +37,21 @@ public class WhatsAppWebhookController {
             Map<String, Object> data = (Map<String, Object>) payload.get("data");
             Map<String, Object> key = (Map<String, Object>) data.get("key");
             
-            Boolean fromMe = (Boolean) key.get("fromMe");
-            if (fromMe != null && fromMe) return ResponseEntity.ok().build();
+            if (Boolean.TRUE.equals(key.get("fromMe"))) return ResponseEntity.ok().build();
 
             String remoteJid = (String) key.get("remoteJid");
+            String pushName = (String) data.get("pushName");
             
             Map<String, Object> message = (Map<String, Object>) data.get("message");
             String userText = extractText(message);
 
             if (userText != null && !userText.isEmpty()) {
-                System.out.println("Recebido de " + remoteJid + ": " + userText);
+                System.out.println("Mensagem de " + pushName + " (" + remoteJid + "): " + userText);
 
                 String respostaIA = ragQueryService.obterRecomendacao(userText);
-                
-                enviarRespostaComCitacao(remoteJid, respostaIA, data);
+                System.out.println("RAG Respondeu. Enviando resposta citada...");
+
+                enviarRespostaCitada(remoteJid, respostaIA, data);
             }
 
         } catch (Exception e) {
@@ -60,21 +60,21 @@ public class WhatsAppWebhookController {
         return ResponseEntity.ok().build();
     }
 
-    private void enviarRespostaComCitacao(String remoteJid, String texto, Map<String, Object> messageData) {
+    private void enviarRespostaCitada(String remoteJid, String texto, Map<String, Object> messageData) {
         String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
 
-        String numeroFinal = remoteJid;
-        if (remoteJid.endsWith("@s.whatsapp.net")) {
-            numeroFinal = remoteJid.replace("@s.whatsapp.net", "");
-        }
-
         Map<String, Object> body = new HashMap<>();
-        body.put("number", numeroFinal);
+        body.put("number", remoteJid); 
         body.put("text", texto);
         
-        if (messageData != null) {
-            body.put("quoted", messageData);
-        }
+ 
+        body.put("quoted", messageData);
+        // -------------------------------
+
+        Map<String, Object> options = new HashMap<>();
+        options.put("presence", "composing"); 
+        options.put("linkPreview", false);
+        body.put("options", options);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -85,7 +85,7 @@ public class WhatsAppWebhookController {
 
         try {
             restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Resposta enviada (citada) para: " + numeroFinal);
+            System.out.println("Resposta enviada com sucesso para: " + remoteJid);
         } catch (Exception e) {
             System.err.println("Erro ao enviar: " + e.getMessage());
         }
@@ -93,44 +93,11 @@ public class WhatsAppWebhookController {
 
     private String extractText(Map<String, Object> message) {
         if (message == null) return null;
-        
-        if (message.containsKey("conversation")) {
-            return (String) message.get("conversation");
-        }
+        if (message.containsKey("conversation")) return (String) message.get("conversation");
         if (message.containsKey("extendedTextMessage")) {
-            Map<String, Object> extended = (Map<String, Object>) message.get("extendedTextMessage");
-            return (String) extended.get("text");
+            Map<String, Object> ext = (Map<String, Object>) message.get("extendedTextMessage");
+            return (String) ext.get("text");
         }
-        return null; 
-    }
-
-    private void enviarRespostaEvolution(String remoteJid, String texto) {
-        String url = EVOLUTION_URL + "/message/sendText/" + INSTANCE_NAME;
-
-        String numeroParaEnvio = remoteJid;
-        
-        if (remoteJid.endsWith("@s.whatsapp.net")) {
-            numeroParaEnvio = remoteJid.replace("@s.whatsapp.net", "");
-        }
-        
-        System.out.println("Enviando para: " + numeroParaEnvio);
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("number", numeroParaEnvio);
-        body.put("text", texto);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("apikey", EVOLUTION_KEY); 
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        RestTemplate restTemplate = new RestTemplate();
-
-        try {
-            restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Resposta enviada com sucesso!");
-        } catch (Exception e) {
-            System.err.println("Erro ao enviar pela Evolution: " + e.getMessage());
-        }
+        return null;
     }
 }
