@@ -92,4 +92,27 @@ public class RAGQueryService {
                          .call()
                          .content();
     }
+
+    public String analisarSintomas(String historicoPaciente) {
+        String promptInvestigador = """
+            Você é um médico fazendo triagem. Analise o histórico de conversa abaixo.
+            
+            Se você já tiver informações suficientes (sintomas, duração, intensidade) para indicar uma especialidade médica com segurança:
+            Responda apenas a palavra: PRONTO
+            
+            Se você precisar de mais detalhes para não errar a indicação:
+            Faça APENAS UMA pergunta curta e direta para o paciente para esclarecer o quadro.
+            (Exemplos: "Tem febre?", "Há quanto tempo sente isso?", "A dor é pontual?")
+            """;
+
+        SystemMessage system = new SystemMessage(promptInvestigador);
+        UserMessage user = new UserMessage("HISTÓRICO:\n" + historicoPaciente);
+
+        return chatClient.prompt(new Prompt(List.of(system, user)))
+                         .call()
+                         .content()
+                         .trim();
+    }
+
+    
 }

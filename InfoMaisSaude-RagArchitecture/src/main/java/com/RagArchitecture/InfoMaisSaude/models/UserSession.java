@@ -6,12 +6,29 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserSession {
+
     private String telefone;
     private TriagemStage estagio;
     private LocalDateTime ultimaInteracao;
-    
+    private String sexo;
+    private List<String> historicoConversa;
     private String nome;
     private String idade;
+    private int perguntasFeitas = 0;
+    private StringBuilder historicoClinico = new StringBuilder();
+
+    public int getPerguntasFeitas() { return perguntasFeitas; }
+    
+    public void incrementarPerguntas() { this.perguntasFeitas++; }
+    
+    public void adicionarAoHistorico(String texto) {
+        this.historicoClinico.append(texto).append("\n");
+    }
+    
+    public String getHistoricoClinico() {
+        return historicoClinico.toString();
+    }
+
     public void setTelefone(String telefone) {
         this.telefone = telefone;
     }
@@ -31,9 +48,6 @@ public class UserSession {
     public void setHistoricoConversa(List<String> historicoConversa) {
         this.historicoConversa = historicoConversa;
     }
-    private String sexo;
-    
-    private List<String> historicoConversa;
 
     public UserSession(String telefone) {
         this.telefone = telefone;
