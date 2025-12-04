@@ -1,7 +1,7 @@
 package com.RagArchitecture.InfoMaisSaude.controllers;
 
-import com.RagArchitecture.InfoMaisSaude.services.RAGQueryService;
 import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayload;
+import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService; 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -26,7 +26,7 @@ public class WhatsAppWebhookController {
     private String META_PHONE_ID;
 
     @Autowired
-    private RAGQueryService ragQueryService;
+    private TriagemFlowService triagemFlowService;
 
     @GetMapping
     public ResponseEntity<String> verifyWebhook(
@@ -37,8 +37,10 @@ public class WhatsAppWebhookController {
         System.out.println("Tentativa de verificação do Webhook...");
 
         if ("subscribe".equals(mode) && VERIFY_TOKEN.equals(token)) {
+            System.out.println("Webhook verificado com sucesso!");
             return ResponseEntity.ok(challenge);
         } else {
+            System.err.println("Falha na verificação: Token inválido.");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Falha na verificação");
         }
     }
@@ -55,25 +57,9 @@ public class WhatsAppWebhookController {
                 
                 System.out.println("Mensagem de " + numero + ": " + texto);
 
-                String intencao = ragQueryService.classificarIntencao(texto);
-                System.out.println("Intenção IA: " + intencao);
-
-                if ("SAUDACAO".equals(intencao)) {
-                    String boasVindas = """
-                        Olá! 👋 Sou o assistente virtual do *Informa + Saúde*.
-                        
-                        Eu utilizo Inteligência Artificial para analisar seus sintomas e indicar qual médico especialista procurar.
-                        
-                        Por favor, descreva o que você está sentindo com detalhes.
-                        _Exemplo: "Estou sentindo tontura e dor no peito."_
-                        """;
-                    enviarRespostaWhatsApp(numero, boasVindas);
-                    
-                } else {
-                    System.out.println("Processando sintomas no RAG...");
-                    String respostaIA = ragQueryService.obterRecomendacao(texto);
-                    enviarRespostaWhatsApp(numero, respostaIA);
-                }
+                String respostaParaEnviar = triagemFlowService.processarMensagem(numero, texto);
+                
+                enviarRespostaWhatsApp(numero, respostaParaEnviar);
             }
 
         } catch (Exception e) {
