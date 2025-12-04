@@ -37,10 +37,8 @@ public class WhatsAppWebhookController {
         System.out.println("Tentativa de verificação do Webhook...");
 
         if ("subscribe".equals(mode) && VERIFY_TOKEN.equals(token)) {
-            System.out.println("Webhook verificado com sucesso!");
             return ResponseEntity.ok(challenge);
         } else {
-            System.err.println("Falha na verificação: Token inválido.");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Falha na verificação");
         }
     }
@@ -52,15 +50,30 @@ public class WhatsAppWebhookController {
             Optional<String> userPhone = extractUserPhone(payload);
 
             if (userText.isPresent() && userPhone.isPresent()) {
-                String texto = userText.get();
+                String texto = userText.get().trim();
                 String numero = userPhone.get();
                 
-                System.out.println("Mensagem recebida de " + numero + ": " + texto);
+                System.out.println("Mensagem de " + numero + ": " + texto);
 
-                String respostaIA = ragQueryService.obterRecomendacao(texto);
-                
-                enviarRespostaWhatsApp(numero, respostaIA);
-            } else {
+                String intencao = ragQueryService.classificarIntencao(texto);
+                System.out.println("Intenção IA: " + intencao);
+
+                if ("SAUDACAO".equals(intencao)) {
+                    String boasVindas = """
+                        Olá! 👋 Sou o assistente virtual do *Informa + Saúde*.
+                        
+                        Eu utilizo Inteligência Artificial para analisar seus sintomas e indicar qual médico especialista procurar.
+                        
+                        Por favor, descreva o que você está sentindo com detalhes.
+                        _Exemplo: "Estou sentindo tontura e dor no peito."_
+                        """;
+                    enviarRespostaWhatsApp(numero, boasVindas);
+                    
+                } else {
+                    System.out.println("Processando sintomas no RAG...");
+                    String respostaIA = ragQueryService.obterRecomendacao(texto);
+                    enviarRespostaWhatsApp(numero, respostaIA);
+                }
             }
 
         } catch (Exception e) {

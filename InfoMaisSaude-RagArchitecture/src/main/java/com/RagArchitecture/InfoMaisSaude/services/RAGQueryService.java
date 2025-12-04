@@ -1,11 +1,11 @@
-package com.RagArchitecture.InfoMaisSaude.services; 
+package com.RagArchitecture.InfoMaisSaude.services;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest; 
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,10 +15,31 @@ import java.util.List;
 public class RAGQueryService {
 
     @Autowired
-    private ChatClient chatClient; 
+    private ChatClient chatClient;
 
     @Autowired
-    private VectorStore vectorStore; 
+    private VectorStore vectorStore;
+
+    public String classificarIntencao(String textoUsuario) {
+        String promptClassificador = """
+            Você é um classificador de intenção para um chatbot de triagem médica.
+            Analise a mensagem do usuário e responda APENAS com uma das etiquetas abaixo:
+            
+            SAUDACAO - Se a mensagem for apenas um cumprimento, despedida, agradecimento curto ou conversa fiada sem contexto médico (ex: "Oi", "Olá", "Bom dia", "Obrigado", "Tchau", "Teste").
+            SINTOMA - Se a mensagem contiver qualquer descrição de dor, sintoma, pedido de ajuda médica ou dúvida sobre saúde (ex: "Estou com dor", "Qual médico para febre?", "Sinto enjoo").
+            
+            Responda estritamente com a palavra: SAUDACAO ou SINTOMA.
+            """;
+
+        SystemMessage systemMessage = new SystemMessage(promptClassificador);
+        UserMessage userMessage = new UserMessage(textoUsuario);
+
+        return chatClient.prompt(new Prompt(List.of(systemMessage, userMessage)))
+                         .call()
+                         .content()
+                         .trim()
+                         .toUpperCase();
+    }
 
     private final String promptDeTriagem = """
         Você é um assistente de triagem médica muito educado e prestativo.
@@ -37,21 +58,17 @@ public class RAGQueryService {
            "Atenção: Esta é uma sugestão e não substitui uma consulta ou diagnóstico médico. Procure um profissional de saúde."
         """;
 
-
     public String obterRecomendacao(String sintomasDoUsuario) {
-
-       
         SearchRequest request = SearchRequest.builder()
-                .query(sintomasDoUsuario) 
-                .topK(2)               
+                .query(sintomasDoUsuario)
+                .topK(2)
                 .build();
         
         List<Document> documentosRelevantes = vectorStore.similaritySearch(request);
 
-      
         StringBuilder contextoBuilder = new StringBuilder();
         for (Document doc : documentosRelevantes) {
-            contextoBuilder.append(doc.getText()); 
+            contextoBuilder.append(doc.getText());
             contextoBuilder.append("\n---\n");
         }
         String contexto = contextoBuilder.toString();
@@ -71,9 +88,8 @@ public class RAGQueryService {
 
         Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
 
-    
-        return chatClient.prompt(prompt) 
-                         .call()         
-                         .content();    
+        return chatClient.prompt(prompt)
+                         .call()
+                         .content();
     }
 }
