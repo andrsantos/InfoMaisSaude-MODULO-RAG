@@ -1,3 +1,3 @@
 package com.RagArchitecture.InfoMaisSaude.dtos;
 
-public record Text(String body) {}
+public record TextDTO(String body) {}

@@ -1,6 +1,6 @@
 package com.RagArchitecture.InfoMaisSaude.controllers;
 
-import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayload;
+import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayloadDTO;
 import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService; 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +46,7 @@ public class WhatsAppWebhookController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> handleWebhookNotification(@RequestBody WhatsAppPayload payload) {
+    public ResponseEntity<Void> handleWebhookNotification(@RequestBody WhatsAppPayloadDTO payload) {
         try {
             Optional<String> userText = extractUserText(payload);
             Optional<String> userPhone = extractUserPhone(payload);
@@ -96,13 +96,13 @@ public class WhatsAppWebhookController {
         }
     }
 
-    private Optional<String> extractUserText(WhatsAppPayload payload) {
+    private Optional<String> extractUserText(WhatsAppPayloadDTO payload) {
         try {
             return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].text().body());
         } catch (Exception e) { return Optional.empty(); }
     }
 
-    private Optional<String> extractUserPhone(WhatsAppPayload payload) {
+    private Optional<String> extractUserPhone(WhatsAppPayloadDTO payload) {
         try {
             return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
         } catch (Exception e) { return Optional.empty(); }
