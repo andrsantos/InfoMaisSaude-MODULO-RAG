@@ -11,9 +11,11 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.RagArchitecture.InfoMaisSaude.services.RAGQueryService;
+
 
 @Service
-public class RAGQueryServiceImpl {
+public class RAGQueryServiceImpl implements RAGQueryService{
 
     @Autowired
     private ChatClient chatClient;
