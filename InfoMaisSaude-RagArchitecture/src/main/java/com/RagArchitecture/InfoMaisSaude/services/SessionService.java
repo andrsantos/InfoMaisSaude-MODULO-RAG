@@ -2,21 +2,13 @@ package com.RagArchitecture.InfoMaisSaude.services;
 
 import com.RagArchitecture.InfoMaisSaude.models.UserSession;
 import org.springframework.stereotype.Service;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class SessionService {
-    private final ConcurrentHashMap<String, UserSession> activeSessions = new ConcurrentHashMap<>();
+public interface SessionService {
 
-    public UserSession getOrCreateSession(String telefone) {
-        return activeSessions.computeIfAbsent(telefone, k -> new UserSession(telefone));
-    }
+     UserSession getOrCreateSession(String telefone);
+     void clearSession(String telefone);
+     UserSession getSession(String telefone);
 
-    public void clearSession(String telefone) {
-        activeSessions.remove(telefone);
-    }
-    
-    public UserSession getSession(String telefone) {
-        return activeSessions.get(telefone);
-    }
+
 }
