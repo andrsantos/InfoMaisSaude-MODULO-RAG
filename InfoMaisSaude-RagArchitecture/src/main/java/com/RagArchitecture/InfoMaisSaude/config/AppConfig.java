@@ -1,4 +1,4 @@
-package com.RagArchitecture.InfoMaisSaude.config; // (Ou no seu pacote de config)
+package com.RagArchitecture.InfoMaisSaude.config; 
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
