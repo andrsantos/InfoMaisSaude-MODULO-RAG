@@ -1,6 +1,7 @@
 package com.RagArchitecture.InfoMaisSaude.controllers;
 
 import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayloadDTO;
+import com.RagArchitecture.InfoMaisSaude.services.AdminIntegrationService;
 import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService; 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,15 @@ public class WhatsAppWebhookController {
 
     @Autowired
     private TriagemFlowService triagemFlowService;
+
+    @Autowired
+    private AdminIntegrationService adminIntegrationService;
+
+    @GetMapping("/testar-integracao")
+    public ResponseEntity<String> testarIntegracaoAdmin() {
+        String resultado = adminIntegrationService.testarConexao();
+        return ResponseEntity.ok(resultado);
+    }
 
     @GetMapping
     public ResponseEntity<String> verifyWebhook(
