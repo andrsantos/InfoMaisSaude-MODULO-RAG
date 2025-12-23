@@ -6,5 +6,10 @@ public enum TriagemStage {
     AGUARDANDO_IDADE,   
     AGUARDANDO_SEXO,    
     TRIAGEM_IA,         
-    FINALIZADO          
+    FINALIZADO,
+    OFERECER_AGENDAMENTO, 
+    ESCOLHER_MEDICO,     
+    DEFINIR_DATA,
+    ESCOLHER_HORARIO,
+    CONFIRMAR_AGENDAMENTO 
 }

@@ -1,12 +1,17 @@
 package com.RagArchitecture.InfoMaisSaude.services;
 
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginRequestDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginResponseDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginRequestDTO;
-import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginResponseDTO;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -23,6 +28,7 @@ public class AdminIntegrationService {
 
     private String jwtToken;
     private final RestTemplate restTemplate = new RestTemplate();
+
 
     private void autenticar() {
         String url = BASE_URL + "/login";
@@ -50,27 +56,92 @@ public class AdminIntegrationService {
         return headers;
     }
 
-    public String testarConexao() {
-        if (this.jwtToken == null) {
-            autenticar();
-            if (this.jwtToken == null) return "Falha na Autenticação (Verifique ngrok e credenciais)";
-        }
 
-        String url = BASE_URL + "/api/agendamentos/disponibilidade?medicoId=1&data=2025-12-15"; 
+    public List<MedicoDTO> buscarMedicos(String especialidade) {
+        String url = BASE_URL + "/api/medicos/por-especialidade?especialidade=" + especialidade;
 
         try {
-            HttpEntity<Void> requestEntity = new HttpEntity<>(criarHeaders());
-            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, List.class);
-            
-            return "✅ Sucesso! Conexão estabelecida. Horários encontrados: " + response.getBody();
-
-        } catch (HttpClientErrorException.Forbidden | HttpClientErrorException.Unauthorized e) {
-            System.out.println("Token expirado, reautenticando...");
-            this.jwtToken = null;
-            autenticar();
-            return "Token expirou. Tente novamente.";
+            ResponseEntity<List<MedicoDTO>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(criarHeaders()),
+                new ParameterizedTypeReference<List<MedicoDTO>>() {}
+            );
+            return response.getBody();
         } catch (Exception e) {
-            return "❌ Erro ao conectar no endpoint de agendamentos: " + e.getMessage();
+            System.err.println("Erro ao buscar médicos: " + e.getMessage());
+            if (e instanceof HttpClientErrorException.Forbidden) {
+                this.jwtToken = null; 
+            }
+            return Collections.emptyList();
         }
     }
+
+    public List<String> buscarHorarios(Long medicoId, String data) {
+        String url = BASE_URL + "/api/agendamentos/disponibilidade?medicoId=" + medicoId + "&data=" + data;
+
+        try {
+            ResponseEntity<List<String>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(criarHeaders()),
+                new ParameterizedTypeReference<List<String>>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("Erro ao buscar horários: " + e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+
+    public boolean agendarConsulta(Long medicoId, LocalDate data, LocalTime horario, 
+                                   String nome, String telefone, String idade, String sexo, String resumo) {
+        
+        String url = BASE_URL + "/api/agendamentos/agendar";
+
+        AgendamentoPayload payload = new AgendamentoPayload(
+            medicoId, data, horario, nome, telefone, idade, sexo, resumo
+        );
+
+        try {
+            HttpEntity<AgendamentoPayload> request = new HttpEntity<>(payload, criarHeaders());
+            
+            ResponseEntity<Void> response = restTemplate.postForEntity(url, request, Void.class);
+            
+            return response.getStatusCode() == HttpStatus.CREATED || response.getStatusCode() == HttpStatus.OK;
+
+        } catch (HttpClientErrorException.Conflict e) {
+            System.err.println("Conflito: Horário já ocupado.");
+            return false;
+        } catch (Exception e) {
+            System.err.println("Erro crítico ao agendar: " + e.getMessage());
+            return false;
+        }
+    }
+
+
+    public String testarConexao() {
+        if (this.jwtToken == null) autenticar();
+        
+        String url = BASE_URL + "/api/agendamentos/disponibilidade?medicoId=1&data=2025-12-20"; 
+
+        try {
+            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(criarHeaders()), List.class);
+            return "✅ Sucesso! Conexão estabelecida. Resposta: " + response.getBody();
+        } catch (Exception e) {
+            return "❌ Erro: " + e.getMessage();
+        }
+    }
+
+    private record AgendamentoPayload(
+        Long medicoId,
+        LocalDate data,
+        LocalTime horario,
+        String nomePaciente,
+        String telefonePaciente,
+        String idade,
+        String sexo,
+        String resumoClinico
+    ) {}
 }

@@ -139,5 +139,39 @@ public class RAGQueryServiceImpl implements RAGQueryService{
                          .content()
                          .trim();
     }
+
+    public String extrairEspecialidade(String textoDaIA) {
+        String prompt = """
+            Analise o texto médico abaixo e extraia APENAS o nome da especialidade médica principal recomendada.
+            Responda com UMA ÚNICA PALAVRA (Ex: CARDIOLOGIA, ORTOPEDIA, CLÍNICO_GERAL).
+            Se não tiver certeza, responda: CLÍNICO_GERAL
+            
+            TEXTO DA IA: "%s"
+            """;
+        return chatClient.prompt(String.format(prompt, textoDaIA)).call().content().trim();
+    }
+
+    public String gerarResumoClinicoEstruturado(String historicoChat, String dadosPaciente) {
+
+        String prompt = """
+            Você é um assistente médico auxiliar.
+            Sua tarefa é ler o histórico de conversa de uma triagem e gerar um RESUMO TÉCNICO ESTRUTURADO para o médico que vai atender o paciente.
+            
+            DADOS DO PACIENTE: %s
+            HISTÓRICO DA CONVERSA:
+            %s
+            
+            SAÍDA ESPERADA (Gere apenas o texto abaixo):
+            - Queixa Principal: (Resuma em 1 linha)
+            - Sintomas Relatados: (Liste os sintomas e duração)
+            - Histórico/Comorbidades: (Se mencionado)
+            - Sugestão de Diagnóstico (Hipótese): (Baseado na triagem)
+            - Grau de Urgência Sugerido: (Baixo/Médio/Alto)
+            """;
+            
+            return chatClient.prompt(prompt)
+                         .call()
+                         .content();
+    }
     
 }
