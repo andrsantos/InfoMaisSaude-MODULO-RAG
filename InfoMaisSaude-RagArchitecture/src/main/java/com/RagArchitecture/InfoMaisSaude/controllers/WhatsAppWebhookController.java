@@ -76,10 +76,15 @@ public class WhatsAppWebhookController {
                 System.out.println("Mensagem de " + numero + ": " + texto);
 
                 BotResponseDTO resposta = triagemFlowService.processarMensagem(numero, texto);
-
+                System.out.println("Tem botões? " + resposta.temBotoes());
+                if (resposta.temBotoes()) {
+                    System.out.println("Botões encontrados: " + resposta.getBotoes());
+                }
                 if(resposta.temBotoes()){
+                    System.out.println("Enviando botões para " + numero);
                     enviarBotoesWhatsApp(numero, resposta.getTexto(), resposta.getBotoes());
                 } else {
+                    System.out.println("Enviando resposta para " + numero);
                     enviarRespostaWhatsApp(numero, resposta.getTexto());
                 }
             }
