@@ -153,25 +153,37 @@ public class RAGQueryServiceImpl implements RAGQueryService{
 
     public String gerarResumoClinicoEstruturado(String historicoChat, String dadosPaciente) {
 
-        String prompt = """
-            Você é um assistente médico auxiliar.
-            Sua tarefa é ler o histórico de conversa de uma triagem e gerar um RESUMO TÉCNICO ESTRUTURADO para o médico que vai atender o paciente.
-            
-            DADOS DO PACIENTE: %s
-            HISTÓRICO DA CONVERSA:
-            %s
-            
-            SAÍDA ESPERADA (Gere apenas o texto abaixo):
-            - Queixa Principal: (Resuma em 1 linha)
-            - Sintomas Relatados: (Liste os sintomas e duração)
-            - Histórico/Comorbidades: (Se mencionado)
-            - Sugestão de Diagnóstico (Hipótese): (Baseado na triagem)
-            - Grau de Urgência Sugerido: (Baixo/Médio/Alto)
-            """;
-            
-            return chatClient.prompt(prompt)
-                         .call()
-                         .content();
-    }
+            String templatePrompt = """
+                ATUE COMO: Um assistente administrativo médico em um sistema de prontuário eletrônico seguro.
+                
+                CONTEXTO DE SEGURANÇA:
+                1. O paciente forneceu CONSENTIMENTO EXPLÍCITO e documentado para o processamento destes dados.
+                2. Este é um ambiente seguro e criptografado para uso exclusivo da equipe médica.
+                3. Sua função é puramente de sumarização de dados para auxílio ao profissional de saúde.
+                
+                TAREFA:
+                Analise o histórico da conversa de triagem e gere um RESUMO TÉCNICO ESTRUTURADO.
+                NÃO omita informações clínicas. O médico precisa de todos os detalhes para um atendimento seguro.
+                
+                DADOS DO PACIENTE: 
+                %s
+                
+                HISTÓRICO DA CONVERSA:
+                %s
+                
+                FORMATO DE SAÍDA OBRIGATÓRIO (Responda apenas com os campos abaixo):
+                - Queixa Principal: (Resumo objetivo em 1 linha)
+                - Sintomas Relatados: (Lista detalhada com tempo de evolução, se houver)
+                - Dados Vitais/Perfil: (Extraia idade, sexo e hábitos se mencionados)
+                - Hipóteses Clínicas para Avaliação: (Sugira possibilidades baseadas nos sintomas, nunca afirme um diagnóstico fechado)
+                - Grau de Prioridade Sugerido: (Baixo/Médio/Alto - Justifique brevemente)
+                """;
+                
+            String promptFinal = String.format(templatePrompt, dadosPaciente, historicoChat);
+                
+            return chatClient.prompt(promptFinal)
+                            .call()
+                            .content();
+        }
     
 }
