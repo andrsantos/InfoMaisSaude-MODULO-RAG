@@ -1,5 +1,6 @@
 package com.RagArchitecture.InfoMaisSaude.controllers;
 
+import com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayloadDTO;
 import com.RagArchitecture.InfoMaisSaude.services.AdminIntegrationService;
 import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService; 
@@ -67,9 +68,13 @@ public class WhatsAppWebhookController {
                 
                 System.out.println("Mensagem de " + numero + ": " + texto);
 
-                String respostaParaEnviar = triagemFlowService.processarMensagem(numero, texto);
+                BotResponseDTO resposta = triagemFlowService.processarMensagem(numero, texto);
                 
-                enviarRespostaWhatsApp(numero, respostaParaEnviar);
+                if(resposta.temBotoes()){
+                    enviarBotoesWhatsApp(numero, resposta.getTexto(), resposta.getBotoes());
+                } else {
+                    enviarRespostaWhatsApp(numero, resposta.getTexto());
+                }
             }
 
         } catch (Exception e) {
@@ -117,4 +122,49 @@ public class WhatsAppWebhookController {
             return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
         } catch (Exception e) { return Optional.empty(); }
     }
+
+    private void enviarBotoesWhatsApp(String destinatario, String textoMensagem, java.util.List<String> opcoes) {
+        String url = "https://graph.facebook.com/v21.0/" + META_PHONE_ID + "/messages";
+
+        // Estrutura complexa do JSON do WhatsApp para botões
+        Map<String, Object> interactive = new HashMap<>();
+        interactive.put("type", "button");
+        interactive.put("body", Map.of("text", textoMensagem));
+
+        java.util.List<Map<String, Object>> buttons = new java.util.ArrayList<>();
+        
+        for (String opcao : opcoes) {
+            Map<String, Object> reply = new HashMap<>();
+            reply.put("id", opcao.toLowerCase().replace(" ", "_")); 
+            reply.put("title", opcao); 
+            
+            buttons.add(Map.of("type", "reply", "reply", reply));
+        }
+
+        Map<String, Object> action = new HashMap<>();
+        action.put("buttons", buttons);
+        interactive.put("action", action);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("messaging_product", "whatsapp");
+        body.put("to", destinatario);
+        body.put("type", "interactive");
+        body.put("interactive", interactive);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(META_API_TOKEN);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+
+        try {
+            restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Botões enviados para: " + destinatario);
+        } catch (Exception e) {
+            System.err.println("Erro ao enviar botões: " + e.getMessage());
+        }
+    }
+
+
 }

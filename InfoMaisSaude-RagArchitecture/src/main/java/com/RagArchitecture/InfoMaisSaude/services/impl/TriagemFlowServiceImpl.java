@@ -1,5 +1,6 @@
 package com.RagArchitecture.InfoMaisSaude.services.impl;
 
+import com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
 import com.RagArchitecture.InfoMaisSaude.enums.TriagemStage;
 import com.RagArchitecture.InfoMaisSaude.models.UserSession;
@@ -29,36 +30,36 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
     private AdminIntegrationService adminService; 
 
     @Override
-    public String processarMensagem(String telefone, String textoUsuario) {
+    public BotResponseDTO processarMensagem(String telefone, String textoUsuario) {
         UserSession sessao = sessionService.getOrCreateSession(telefone);
 
         if (textoUsuario.equalsIgnoreCase("reset") || textoUsuario.equalsIgnoreCase("sair")) {
             sessionService.clearSession(telefone);
-            return "Atendimento encerrado/reiniciado. Se precisar, mande um 'Oi' para começar de novo.";
+            return new BotResponseDTO("Sua sessão foi reiniciada. Digite 'Oi' para começar uma nova triagem."); 
         }
 
         switch (sessao.getEstagio()) {
             case INICIO:
                 sessao.setEstagio(TriagemStage.AGUARDANDO_NOME);
-                return "Olá! Sou o assistente virtual do *Informa + Saúde*. \n\nPara começarmos sua triagem, por favor, digite seu **Nome Completo**.";
+                return new BotResponseDTO("Olá! Bem-vindo ao Info + Saúde! 😊\n\nPara começarmos, qual é o seu **Nome Completo**?");
 
             case AGUARDANDO_NOME:
                 sessao.setNome(textoUsuario);
                 sessao.setEstagio(TriagemStage.AGUARDANDO_IDADE);
-                return "Prazer, " + textoUsuario + "! \nAgora, por favor, me diga sua **Idade** (apenas números).";
+                return new BotResponseDTO("Prazer, " + textoUsuario + "! \nAgora, por favor, me diga sua **Idade** (apenas números).");
 
             case AGUARDANDO_IDADE:
                 if (!textoUsuario.matches("\\d+")) {
-                    return "Por favor, digite apenas números para a idade.";
+                    return new BotResponseDTO("Por favor, digite apenas números para a idade.");
                 }
                 sessao.setIdade(textoUsuario);
                 sessao.setEstagio(TriagemStage.AGUARDANDO_SEXO);
-                return "Certo. Qual seu **Sexo Biológico**? (Responda Masculino ou Feminino)";
-
-            case AGUARDANDO_SEXO:
+                return new BotResponseDTO("Certo. Qual seu **Sexo Biológico**?", List.of("Masculino", "Feminino"));
+           
+                case AGUARDANDO_SEXO:
                 sessao.setSexo(textoUsuario);
                 sessao.setEstagio(TriagemStage.TRIAGEM_IA);
-                return "Cadastro concluído! ✅\n\nAgora me conte com detalhes: **O que você está sentindo?**";
+                return new BotResponseDTO("Cadastro concluído! ✅\n\nAgora me conte com detalhes: **O que você está sentindo?**");
 
             case TRIAGEM_IA:
                 sessao.adicionarAoHistorico("Paciente: " + textoUsuario);
@@ -74,7 +75,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     if (!respostaInvestigativa.toUpperCase().contains("PRONTO")) {
                         sessao.incrementarPerguntas();
                         sessao.adicionarAoHistorico("Bot: " + respostaInvestigativa);
-                        return respostaInvestigativa;
+                        return new BotResponseDTO(respostaInvestigativa);
                     }
                 }
                 
@@ -93,14 +94,15 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
                 if (!medicos.isEmpty()) {
                     sessao.setEstagio(TriagemStage.OFERECER_AGENDAMENTO);
-                    return recomendacaoTexto + "\n\n" +
+                    String msg = recomendacaoTexto + "\n\n" +
                            "-----------------------------------\n" +
                            "🔎 Identifiquei que um *" + especialidade + "* pode te ajudar.\n" +
-                           "Encontrei " + medicos.size() + " especialistas disponíveis na nossa rede.\n" +
-                           "**Gostaria de marcar uma consulta agora?** (Responda Sim ou Não)";
+                           "Encontrei " + medicos.size() + " especialistas.\n" +
+                           "**Gostaria de marcar uma consulta agora?**";
+                    return new BotResponseDTO(msg, List.of("Sim","Não"));
                 } else {
                     sessionService.clearSession(telefone);
-                    return recomendacaoTexto + "\n\n(No momento não temos médicos dessa especialidade disponíveis para agendamento online. Atendimento finalizado.)";
+                    return new BotResponseDTO(recomendacaoTexto + "\n\n(No momento não temos médicos dessa especialidade disponíveis para agendamento online. Atendimento finalizado.)");
                 }
 
 
@@ -114,10 +116,10 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     }
                     
                     sessao.setEstagio(TriagemStage.ESCOLHER_MEDICO);
-                    return lista.toString();
+                    return new BotResponseDTO(lista.toString());
                 } else {
                     sessionService.clearSession(telefone);
-                    return "Tudo bem! Espero que melhore. Se precisar, estou por aqui.";
+                    return new BotResponseDTO("Tudo bem! Espero que melhore. Se precisar, estou por aqui.");
                 }
 
             case ESCOLHER_MEDICO:
@@ -128,14 +130,14 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         sessao.setMedicoSelecionado(medico);
                         
                         sessao.setEstagio(TriagemStage.DEFINIR_DATA);
-                        return "Você escolheu: *" + medico.getNome() + "*.\n" +
+                        return new BotResponseDTO("Você escolheu: *" + medico.getNome() + "*.\n" +
                                "Para qual dia você deseja ver a agenda? (Digite no formato **DD/MM/AAAA**, ex: " + 
-                               LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")";
+                               LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")");
                     } else {
-                        return "Número inválido. Tente novamente.";
+                        return new BotResponseDTO("Número inválido. Tente novamente.");
                     }
                 } catch (NumberFormatException e) {
-                    return "Por favor, digite apenas o número da opção.";
+                    return new BotResponseDTO("Por favor, digite apenas o número da opção.");
                 }
 
             case DEFINIR_DATA:
@@ -144,7 +146,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     LocalDate data = LocalDate.parse(textoUsuario.trim(), formatter);
                     
                     if (data.isBefore(LocalDate.now())) {
-                        return "Essa data já passou. Por favor, escolha uma data futura (DD/MM/AAAA):";
+                        return new BotResponseDTO("Essa data já passou. Por favor, escolha uma data futura (DD/MM/AAAA):");
                     }
 
                     sessao.setDataDesejada(data);
@@ -152,17 +154,17 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     List<String> horarios = adminService.buscarHorarios(sessao.getMedicoSelecionado().getId(), data.toString());
 
                     if (horarios.isEmpty()) {
-                        return "O Dr(a). " + sessao.getMedicoSelecionado().getNome() + " não tem horários livres em " + textoUsuario + ".\n" +
-                               "Por favor, digite outra data (DD/MM/AAAA):";
+                        return new BotResponseDTO("O Dr(a). " + sessao.getMedicoSelecionado().getNome() + " não tem horários livres em " + textoUsuario + ".\n" +
+                        "Por favor, digite outra data (DD/MM/AAAA):");
                     }
 
                     sessao.setEstagio(TriagemStage.ESCOLHER_HORARIO);
-                    return "Horários disponíveis para " + textoUsuario + ":\n\n" + 
+                    return new BotResponseDTO("Horários disponíveis para " + textoUsuario + ":\n\n" + 
                            String.join("  |  ", horarios) + 
-                           "\n\nDigite o horário desejado (ex: 09:30):";
+                           "\n\nDigite o horário desejado (ex: 09:30):" );
 
                 } catch (DateTimeParseException e) {
-                    return "Data inválida. Certifique-se de usar o formato DD/MM/AAAA (ex: 25/12/2025).";
+                    return new BotResponseDTO("Data inválida. Certifique-se de usar o formato DD/MM/AAAA (ex: 25/12/2025).");
                 }
 
             case ESCOLHER_HORARIO:
@@ -175,16 +177,16 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     sessao.setResumoClinicoGerado(resumo);
 
                     sessao.setEstagio(TriagemStage.CONFIRMAR_AGENDAMENTO);
-                    return "📝 *Confirme seu Agendamento*\n\n" +
+                    return new BotResponseDTO("📝 *Confirme seu Agendamento*\n\n" +
                            "👤 Paciente: " + sessao.getNome() + "\n" +
                            "👨‍⚕️ Médico: " + sessao.getMedicoSelecionado().getNome() + "\n" +
                            "📅 Data: " + sessao.getDataDesejada().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "\n" +
                            "⏰ Horário: " + horario + "\n" +
                            "🏥 Especialidade: " + sessao.getEspecialidadeDetectada() + "\n\n" +
-                           "Digite **SIM** para confirmar.";
+                           "Digite **SIM** para confirmar.          ");          
 
                 } catch (DateTimeParseException e) {
-                    return "Formato de horário inválido. Digite exatamente como apareceu na lista (ex: 09:30).";
+                    return new BotResponseDTO("Formato de horário inválido. Digite exatamente como apareceu na lista (ex: 09:30).");
                 }
 
             case CONFIRMAR_AGENDAMENTO:
@@ -204,20 +206,20 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     sessionService.clearSession(telefone);
 
                     if (sucesso) {
-                        return "✅ *Agendamento Confirmado com Sucesso!*\n\n" +
+                        return new BotResponseDTO("✅ *Agendamento Confirmado com Sucesso!*\n\n" +
                                "O médico já recebeu seu histórico clínico.\n" +
-                               "Obrigado por usar o Info + Saúde!";
+                               "Obrigado por usar o Info + Saúde!");
                     } else {
-                        return "❌ Ops! Tivemos um problema.\n" +
+                        return new BotResponseDTO(  "❌ Ops! Tivemos um problema.\n" +
                                "Parece que esse horário foi ocupado agora mesmo.\n" +
-                               "Por favor, reinicie o atendimento mandando um 'Oi' para escolher outro horário.";
+                               "Por favor, reinicie o atendimento mandando um 'Oi' para escolher outro horário.");
                     }
                 } else {
-                    return "Agendamento pendente. Digite SIM para confirmar ou RESET para cancelar.";
+                    return new BotResponseDTO("Agendamento pendente. Digite SIM para confirmar ou RESET para cancelar.");
                 }
 
             default:
-                return "Erro no fluxo. Digite 'reset' para reiniciar.";
+                return new BotResponseDTO("Erro no fluxo. Digite 'reset' para reiniciar.");
         }
     }
 }
