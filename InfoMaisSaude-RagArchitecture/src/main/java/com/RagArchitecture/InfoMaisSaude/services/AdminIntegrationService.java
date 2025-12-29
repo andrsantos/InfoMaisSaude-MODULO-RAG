@@ -58,6 +58,7 @@ public class AdminIntegrationService {
 
 
     public List<MedicoDTO> buscarMedicos(String especialidade) {
+        System.out.println("Buscando médicos para a especialidade: " + especialidade);
         String url = BASE_URL + "/api/medicos/por-especialidade?especialidade=" + especialidade;
 
         try {

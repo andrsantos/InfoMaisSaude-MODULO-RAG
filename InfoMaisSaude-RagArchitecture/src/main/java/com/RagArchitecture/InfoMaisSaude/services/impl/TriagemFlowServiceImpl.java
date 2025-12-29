@@ -87,7 +87,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
                 String especialidade = ragQueryService.extrairEspecialidade(recomendacaoTexto);
                 sessao.setEspecialidadeDetectada(especialidade);
-
+                System.out.println("Especialidade detectada: " + especialidade);
                 List<MedicoDTO> medicos = adminService.buscarMedicos(especialidade);
                 sessao.setMedicosEncontrados(medicos);
 
