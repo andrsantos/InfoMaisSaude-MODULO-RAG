@@ -3,7 +3,11 @@ package com.RagArchitecture.InfoMaisSaude.controllers;
 import com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayloadDTO;
 import com.RagArchitecture.InfoMaisSaude.services.AdminIntegrationService;
-import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService; 
+import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -32,6 +36,9 @@ public class WhatsAppWebhookController {
 
     @Autowired
     private AdminIntegrationService adminIntegrationService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @GetMapping("/testar-integracao")
     public ResponseEntity<String> testarIntegracaoAdmin() {
@@ -69,7 +76,7 @@ public class WhatsAppWebhookController {
                 System.out.println("Mensagem de " + numero + ": " + texto);
 
                 BotResponseDTO resposta = triagemFlowService.processarMensagem(numero, texto);
-                
+
                 if(resposta.temBotoes()){
                     enviarBotoesWhatsApp(numero, resposta.getTexto(), resposta.getBotoes());
                 } else {
@@ -112,9 +119,35 @@ public class WhatsAppWebhookController {
     }
 
     private Optional<String> extractUserText(WhatsAppPayloadDTO payload) {
-        try {
-            return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].text().body());
-        } catch (Exception e) { return Optional.empty(); }
+            try {
+                if (payload == null || payload.entry() == null || payload.entry().length == 0) return Optional.empty();
+                var changes = payload.entry()[0].changes();
+                if (changes == null || changes.length == 0) return Optional.empty();
+                var value = changes[0].value();
+                if (value == null || value.messages() == null || value.messages().length == 0) return Optional.empty();
+
+                var message = value.messages()[0];
+                String type = message.type();
+
+                if ("text".equals(type) && message.text() != null) {
+                    return Optional.of(message.text().body());
+                }
+
+                if ("interactive".equals(type) && message.interactive() != null) {
+                    var interactive = message.interactive();
+                    
+                    if (interactive.button_reply() != null) {
+                        return Optional.of(interactive.button_reply().title());
+                    }
+                }
+
+                return Optional.empty();
+                
+            } catch (Exception e) {
+                System.err.println("Erro ao extrair texto: " + e.getMessage());
+                e.printStackTrace(); 
+                return Optional.empty();
+            }
     }
 
     private Optional<String> extractUserPhone(WhatsAppPayloadDTO payload) {
@@ -126,43 +159,62 @@ public class WhatsAppWebhookController {
     private void enviarBotoesWhatsApp(String destinatario, String textoMensagem, java.util.List<String> opcoes) {
         String url = "https://graph.facebook.com/v21.0/" + META_PHONE_ID + "/messages";
 
-        // Estrutura complexa do JSON do WhatsApp para botões
-        Map<String, Object> interactive = new HashMap<>();
-        interactive.put("type", "button");
-        interactive.put("body", Map.of("text", textoMensagem));
-
-        java.util.List<Map<String, Object>> buttons = new java.util.ArrayList<>();
-        
-        for (String opcao : opcoes) {
-            Map<String, Object> reply = new HashMap<>();
-            reply.put("id", opcao.toLowerCase().replace(" ", "_")); 
-            reply.put("title", opcao); 
-            
-            buttons.add(Map.of("type", "reply", "reply", reply));
-        }
-
-        Map<String, Object> action = new HashMap<>();
-        action.put("buttons", buttons);
-        interactive.put("action", action);
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("messaging_product", "whatsapp");
-        body.put("to", destinatario);
-        body.put("type", "interactive");
-        body.put("interactive", interactive);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(META_API_TOKEN);
-
-        HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        RestTemplate restTemplate = new RestTemplate();
-
         try {
-            restTemplate.postForEntity(url, request, String.class);
-            System.out.println("Botões enviados para: " + destinatario);
+            ObjectNode rootNode = objectMapper.createObjectNode();
+            rootNode.put("messaging_product", "whatsapp");
+            rootNode.put("recipient_type", "individual");
+            rootNode.put("to", destinatario);
+            rootNode.put("type", "interactive");
+
+            ObjectNode interactiveNode = objectMapper.createObjectNode();
+            interactiveNode.put("type", "button");
+
+            ObjectNode bodyNode = objectMapper.createObjectNode();
+            bodyNode.put("text", textoMensagem);
+            interactiveNode.set("body", bodyNode);
+
+            ObjectNode actionNode = objectMapper.createObjectNode();
+            ArrayNode buttonsArray = objectMapper.createArrayNode();
+
+            for (int i = 0; i < opcoes.size(); i++) {
+                String opcao = opcoes.get(i);
+                
+                ObjectNode buttonNode = objectMapper.createObjectNode();
+                buttonNode.put("type", "reply");
+                
+                ObjectNode replyNode = objectMapper.createObjectNode();
+                String idUnico = "btn_" + i + "_" + opcao.toLowerCase().replaceAll("\\s+", "_");
+                
+                replyNode.put("id", idUnico); 
+                replyNode.put("title", opcao); 
+                
+                buttonNode.set("reply", replyNode);
+                buttonsArray.add(buttonNode);
+            }
+
+            actionNode.set("buttons", buttonsArray);
+            interactiveNode.set("action", actionNode);
+            rootNode.set("interactive", interactiveNode);
+
+            String jsonBody = objectMapper.writeValueAsString(rootNode);
+            
+            System.out.println("--- ENVIANDO JSON BOTOES ---");
+            System.out.println(jsonBody);
+            System.out.println("----------------------------");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(META_API_TOKEN);
+
+            HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
+            RestTemplate restTemplate = new RestTemplate();
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            System.out.println("Status Envio Botões: " + response.getStatusCode());
+
         } catch (Exception e) {
-            System.err.println("Erro ao enviar botões: " + e.getMessage());
+            System.err.println("❌ ERRO CRÍTICO AO ENVIAR BOTÕES: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

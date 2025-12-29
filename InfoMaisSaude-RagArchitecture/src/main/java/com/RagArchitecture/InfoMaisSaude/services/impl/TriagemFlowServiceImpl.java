@@ -8,6 +8,7 @@ import com.RagArchitecture.InfoMaisSaude.services.AdminIntegrationService;
 import com.RagArchitecture.InfoMaisSaude.services.RAGQueryService;
 import com.RagArchitecture.InfoMaisSaude.services.SessionService;
 import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,8 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
     @Autowired
     private AdminIntegrationService adminService; 
+
+ 
 
     @Override
     public BotResponseDTO processarMensagem(String telefone, String textoUsuario) {
