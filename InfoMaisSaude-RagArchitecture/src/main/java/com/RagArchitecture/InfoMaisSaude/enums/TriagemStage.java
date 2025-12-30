@@ -1,7 +1,8 @@
 package com.RagArchitecture.InfoMaisSaude.enums;
 
 public enum TriagemStage {
-    INICIO,             
+    INICIO,
+    AGUARDANDO_TERMOS,             
     AGUARDANDO_NOME,    
     AGUARDANDO_IDADE,   
     AGUARDANDO_SEXO,    
