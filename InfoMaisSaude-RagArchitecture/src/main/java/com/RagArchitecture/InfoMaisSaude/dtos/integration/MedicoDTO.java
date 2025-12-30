@@ -11,7 +11,15 @@ public class MedicoDTO {
     List<AgendaMedicoDTO> agenda; 
     String login;
     String senha;
+    
 
+
+    public MedicoDTO(Long medicoId, String nome, String especializacao, Object object, Object object2, Object object3) {
+        this.id = medicoId;
+        this.nome = nome;
+        this.especializacao = especializacao;
+
+    }
 
     public Long getId() {
         return this.id;

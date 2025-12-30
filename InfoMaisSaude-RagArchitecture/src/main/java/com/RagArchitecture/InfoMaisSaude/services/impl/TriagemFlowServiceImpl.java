@@ -12,6 +12,7 @@ import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -215,7 +216,39 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
             //     }
 
             case CONFIRMAR_AGENDAMENTO:
-                if (textoUsuario.equalsIgnoreCase("sim") || textoUsuario.toLowerCase().contains("confirm")) {
+                if (textoUsuario.startsWith("AGENDAR_")) {
+                    try {
+                        String[] partes = textoUsuario.split("_");
+                        Long medicoId = Long.parseLong(partes[1]);
+                        String data = partes[2];
+                        String hora = partes[3];
+                        
+                        MedicoDTO medicoFake = new MedicoDTO(medicoId, "Médico Selecionado", "", null, null, null);
+                        sessao.setMedicoSelecionado(medicoFake);
+                        sessao.setDataDesejada(LocalDate.parse(data));
+                        sessao.setHorarioSelecionado(LocalTime.parse(hora));
+                        
+                        if (sessao.getResumoClinicoGerado() == null) {
+                            String resumo = ragQueryService.gerarResumoClinicoEstruturado(sessao.getHistoricoClinico().toString(), sessao.getNome());
+                            sessao.setResumoClinicoGerado(resumo);
+                        }
+                        
+                        return new BotResponseDTO(
+                            "📝 *Confirmar Agendamento*\n\n" +
+                            "📅 Data: " + formatarDataCurta(sessao.getDataDesejada()) + "\n" +
+                            "⏰ Horário: " + sessao.getHorarioSelecionado() + "\n" +
+                            "🩺 Especialidade: " + sessao.getEspecialidadeDetectada() + "\n\n" +
+                            "Posso confirmar?",
+                            List.of("Sim, confirmar", "Cancelar") 
+                        );
+                        
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return new BotResponseDTO("Ocorreu um erro ao processar sua escolha. Por favor, tente novamente.");
+                    }
+                }
+                
+                if (textoUsuario.toLowerCase().contains("sim") || textoUsuario.toLowerCase().contains("confirmar")) {
                     
                     boolean sucesso = adminService.agendarConsulta(
                         sessao.getMedicoSelecionado().getId(),
@@ -227,20 +260,19 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         sessao.getSexo(),
                         sessao.getResumoClinicoGerado()
                     );
-
+                    
                     sessionService.clearSession(telefone);
-
+                    
                     if (sucesso) {
-                        return new BotResponseDTO("✅ *Agendamento Confirmado com Sucesso!*\n\n" +
-                               "O médico já recebeu seu histórico clínico.\n" +
-                               "Obrigado por usar o Info + Saúde!");
+                        return new BotResponseDTO("✅ *Agendamento Confirmado!* \nO médico já recebeu seu histórico.");
                     } else {
-                        return new BotResponseDTO(  "❌ Ops! Tivemos um problema.\n" +
-                               "Parece que esse horário foi ocupado agora mesmo.\n" +
-                               "Por favor, reinicie o atendimento mandando um 'Oi' para escolher outro horário.");
+                        return new BotResponseDTO("❌ Ops! Esse horário foi ocupado agora mesmo. Digite 'Oi' para tentar outro.");
                     }
-                } else {
-                    return new BotResponseDTO("Agendamento pendente. Digite SIM para confirmar ou RESET para cancelar.");
+                } 
+                
+                else {
+                    sessionService.clearSession(telefone);
+                    return new BotResponseDTO("Agendamento cancelado. Se precisar, mande um 'Oi'.");
                 }
 
             default:
