@@ -41,9 +41,29 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
         }
 
         switch (sessao.getEstagio()) {
+            
             case INICIO:
-                sessao.setEstagio(TriagemStage.AGUARDANDO_NOME);
-                return new BotResponseDTO("Olá! Bem-vindo ao Info + Saúde! 😊\n\nPara começarmos, qual é o seu **Nome Completo**?");
+                sessao.setEstagio(TriagemStage.AGUARDANDO_TERMOS);
+                
+                String mensagemPrivacidade = 
+                    "Olá! Bem-vindo ao *Info + Saúde* 🏥\n\n" +
+                    "🔐 Antes de prosseguirmos, precisamos do seu consentimento para tratar seus dados (Nome, Idade, Sintomas) com total segurança.\n\n" +
+                    "Você pode ler nossa Política de Privacidade aqui:\n" +
+                    "🔗 https://infomaissaude.com.br/politica-de-privacidade\n\n" +
+                    "Ao continuar, você concorda com nossos termos.";
+                
+                return new BotResponseDTO(mensagemPrivacidade, List.of("Concordo e Continuar"));
+
+            case AGUARDANDO_TERMOS:
+                if (textoUsuario.toLowerCase().contains("concordo") || textoUsuario.toLowerCase().contains("continuar")) {
+                    sessao.setEstagio(TriagemStage.AGUARDANDO_NOME);
+                    return new BotResponseDTO("Perfeito! Vamos começar.\n\nPor favor, digite seu **Nome Completo**.");
+                } else {
+                    return new BotResponseDTO(
+                        "Para continuarmos seu atendimento, preciso que você concorde com nossa política de dados.",
+                        List.of("Concordo e Continuar")
+                    );
+                }
 
             case AGUARDANDO_NOME:
                 sessao.setNome(textoUsuario);
