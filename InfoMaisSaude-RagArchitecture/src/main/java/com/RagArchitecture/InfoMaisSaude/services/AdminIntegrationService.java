@@ -3,6 +3,8 @@ package com.RagArchitecture.InfoMaisSaude.services;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginRequestDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.SlotDisponivelDTO;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -93,6 +95,23 @@ public class AdminIntegrationService {
             System.err.println("Erro ao buscar horários: " + e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade){
+         String url = BASE_URL + "/api/agendamentos/disponibilidade-combo?especialidade=" + especialidade;
+        try {
+            ResponseEntity<List<SlotDisponivelDTO>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(criarHeaders()),
+                new ParameterizedTypeReference<List<SlotDisponivelDTO>>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("Erro ao buscar horários: " + e.getMessage());
+            return Collections.emptyList();
+        }
+
     }
 
 
