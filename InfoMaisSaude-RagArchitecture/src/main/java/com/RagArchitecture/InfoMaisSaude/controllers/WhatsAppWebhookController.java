@@ -76,15 +76,12 @@ public class WhatsAppWebhookController {
                 System.out.println("Mensagem de " + numero + ": " + texto);
 
                 BotResponseDTO resposta = triagemFlowService.processarMensagem(numero, texto);
-                System.out.println("Tem botões? " + resposta.temBotoes());
-                if (resposta.temBotoes()) {
-                    System.out.println("Botões encontrados: " + resposta.getBotoes());
-                }
-                if(resposta.temBotoes()){
-                    System.out.println("Enviando botões para " + numero);
+
+                if(resposta.temLista()){
+                    enviarListaWhatsApp(numero, resposta.getTexto(), resposta.getTextoBotaoLista(), resposta.getItensLista());
+                } else if(resposta.temBotoes()){
                     enviarBotoesWhatsApp(numero, resposta.getTexto(), resposta.getBotoes());
                 } else {
-                    System.out.println("Enviando resposta para " + numero);
                     enviarRespostaWhatsApp(numero, resposta.getTexto());
                 }
             }
@@ -123,45 +120,7 @@ public class WhatsAppWebhookController {
         }
     }
 
-    private Optional<String> extractUserText(WhatsAppPayloadDTO payload) {
-            try {
-                if (payload == null || payload.entry() == null || payload.entry().length == 0) return Optional.empty();
-                var changes = payload.entry()[0].changes();
-                if (changes == null || changes.length == 0) return Optional.empty();
-                var value = changes[0].value();
-                if (value == null || value.messages() == null || value.messages().length == 0) return Optional.empty();
-
-                var message = value.messages()[0];
-                String type = message.type();
-
-                if ("text".equals(type) && message.text() != null) {
-                    return Optional.of(message.text().body());
-                }
-
-                if ("interactive".equals(type) && message.interactive() != null) {
-                    var interactive = message.interactive();
-                    
-                    if (interactive.button_reply() != null) {
-                        return Optional.of(interactive.button_reply().title());
-                    }
-                }
-
-                return Optional.empty();
-                
-            } catch (Exception e) {
-                System.err.println("Erro ao extrair texto: " + e.getMessage());
-                e.printStackTrace(); 
-                return Optional.empty();
-            }
-    }
-
-    private Optional<String> extractUserPhone(WhatsAppPayloadDTO payload) {
-        try {
-            return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
-        } catch (Exception e) { return Optional.empty(); }
-    }
-
-    private void enviarBotoesWhatsApp(String destinatario, String textoMensagem, java.util.List<String> opcoes) {
+     private void enviarBotoesWhatsApp(String destinatario, String textoMensagem, java.util.List<String> opcoes) {
         String url = "https://graph.facebook.com/v21.0/" + META_PHONE_ID + "/messages";
 
         try {
@@ -223,5 +182,114 @@ public class WhatsAppWebhookController {
         }
     }
 
+    private void enviarListaWhatsApp(String destinatario, String textoMensagem, String textoBotao, java.util.List<com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO.ListItemDTO> itens) {
+        String url = "https://graph.facebook.com/v21.0/" + META_PHONE_ID + "/messages";
+
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode root = objectMapper.createObjectNode();
+            root.put("messaging_product", "whatsapp");
+            root.put("to", destinatario);
+            root.put("type", "interactive");
+
+            com.fasterxml.jackson.databind.node.ObjectNode interactive = objectMapper.createObjectNode();
+            interactive.put("type", "list");
+
+            com.fasterxml.jackson.databind.node.ObjectNode body = objectMapper.createObjectNode();
+            body.put("text", textoMensagem);
+            interactive.set("body", body);
+
+            com.fasterxml.jackson.databind.node.ObjectNode action = objectMapper.createObjectNode();
+            action.put("button", textoBotao); 
+
+            com.fasterxml.jackson.databind.node.ArrayNode sections = objectMapper.createArrayNode();
+            com.fasterxml.jackson.databind.node.ObjectNode section = objectMapper.createObjectNode();
+            section.put("title", "Disponibilidade"); 
+
+            com.fasterxml.jackson.databind.node.ArrayNode rows = objectMapper.createArrayNode();
+            
+            int limite = Math.min(itens.size(), 10);
+            
+            for (int i = 0; i < limite; i++) {
+                var item = itens.get(i);
+                com.fasterxml.jackson.databind.node.ObjectNode row = objectMapper.createObjectNode();
+                row.put("id", item.id()); 
+                
+                String tituloLimpo = item.titulo().length() > 24 ? item.titulo().substring(0, 23) + "…" : item.titulo();
+                row.put("title", tituloLimpo);
+
+                if (item.descricao() != null) {
+                    String descLimpa = item.descricao().length() > 72 ? item.descricao().substring(0, 71) + "…" : item.descricao();
+                    row.put("description", descLimpa);
+                }
+                rows.add(row);
+            }
+
+            section.set("rows", rows);
+            sections.add(section);
+            action.set("sections", sections);
+            interactive.set("action", action);
+            root.set("interactive", interactive);
+
+            String jsonBody = objectMapper.writeValueAsString(root);
+            System.out.println("JSON LISTA: " + jsonBody); 
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(META_API_TOKEN);
+
+            org.springframework.http.HttpEntity<String> request = new org.springframework.http.HttpEntity<>(jsonBody, headers);
+            new org.springframework.web.client.RestTemplate().postForEntity(url, request, String.class);
+
+        } catch (Exception e) {
+            System.err.println("Erro ao enviar lista: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+    private Optional<String> extractUserText(WhatsAppPayloadDTO payload) {
+    try {
+        
+        if (payload == null || payload.entry() == null || payload.entry().length == 0) return Optional.empty();
+        var changes = payload.entry()[0].changes();
+        if (changes == null || changes.length == 0) return Optional.empty();
+        var value = changes[0].value();
+        if (value == null || value.messages() == null || value.messages().length == 0) return Optional.empty();
+
+        var message = value.messages()[0];
+        String type = message.type();
+
+        if ("text".equals(type) && message.text() != null) {
+            return Optional.of(message.text().body());
+        }
+
+        if ("interactive".equals(type) && message.interactive() != null) {
+            var interactive = message.interactive();
+            
+            if (interactive.button_reply() != null) {
+                return Optional.of(interactive.button_reply().title());
+            }
+
+            if (interactive.list_reply() != null) {
+                return Optional.of(interactive.list_reply().id());
+            }
+        }
+
+        return Optional.empty();
+        
+    } catch (Exception e) {
+        System.err.println("Erro ao extrair texto: " + e.getMessage());
+        e.printStackTrace(); 
+        return Optional.empty();
+    }
+}
+
+    private Optional<String> extractUserPhone(WhatsAppPayloadDTO payload) {
+        try {
+            return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
+        } catch (Exception e) { return Optional.empty(); }
+    }
+
+   
 
 }
