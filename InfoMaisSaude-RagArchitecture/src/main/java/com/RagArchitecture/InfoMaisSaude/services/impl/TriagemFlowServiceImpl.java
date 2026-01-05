@@ -1,6 +1,7 @@
 package com.RagArchitecture.InfoMaisSaude.services.impl;
 
 import com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.ClinicaDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.SlotDisponivelDTO;
 import com.RagArchitecture.InfoMaisSaude.enums.TriagemStage;
@@ -43,6 +44,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
         switch (sessao.getEstagio()) {
             
             case INICIO:
+
                 sessao.setEstagio(TriagemStage.AGUARDANDO_TERMOS);
                 
                 String mensagemPrivacidade = 
@@ -55,9 +57,31 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                 return new BotResponseDTO(mensagemPrivacidade, List.of("Concordo e Continuar"));
 
             case AGUARDANDO_TERMOS:
+
                 if (textoUsuario.toLowerCase().contains("concordo") || textoUsuario.toLowerCase().contains("continuar")) {
-                    sessao.setEstagio(TriagemStage.AGUARDANDO_NOME);
-                    return new BotResponseDTO("Perfeito! Vamos começar.\n\nPor favor, digite seu **Nome Completo**.");
+
+                    List<ClinicaDTO> clinicas = adminService.buscarClinicas();
+
+                    if(clinicas.isEmpty()){
+                        return new BotResponseDTO("Desculpe, não encontrei clínicas no nosso sistema");
+                    }
+
+                    List<BotResponseDTO.ListItemDTO> listaClinicas = new ArrayList<>();
+
+                    for(ClinicaDTO c: clinicas){
+                        listaClinicas.add(new BotResponseDTO.ListItemDTO(
+                            "CLINICA_" + c.id(),
+                            c.nome(),
+                            "Toque para selecionar"
+                        ));
+                    }
+
+                    sessao.setEstagio(TriagemStage.ESCOLHER_CLINICA);
+
+                    return new BotResponseDTO("Perfeito! Para começar, por favor **selecione a clínica** onde deseja ser atendido:",
+                    "Ver Clínicas",
+                    listaClinicas);
+
                 } else {
                     return new BotResponseDTO(
                         "Para continuarmos seu atendimento, preciso que você concorde com nossa política de dados.",
@@ -65,177 +89,245 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     );
                 }
 
+            case ESCOLHER_CLINICA:
+
+                 Long clinicaId = null;
+
+                 if(textoUsuario.startsWith("CLINICA_")){
+
+                    try{
+                        clinicaId = Long.parseLong(textoUsuario.split("_")[1]);
+                    }
+                    catch(Exception e){
+                        System.out.println("Falha ao ler ID da clínica");
+                    }
+
+                 }  else {
+
+                    return new BotResponseDTO("Por favor, selecione uma das opções da lista clicando no botão 'Ver Clínicas' ");
+                 
+                }
+
+                if (clinicaId != null) {
+
+                sessao.setClinicaIdSelecionada(clinicaId);
+                sessao.setEstagio(TriagemStage.ESCOLHER_ACAO);
+            
+                return new BotResponseDTO(
+                "Clínica selecionada com sucesso! 🏥\n\nO que você deseja fazer agora?",
+                List.of("Marcar Consulta", "Cancelar Consulta")
+                );
+
+                } else {
+                return new BotResponseDTO("Não entendi qual clínica você escolheu. Por favor, tente novamente pela lista.");
+            }
+
+            case ESCOLHER_ACAO:
+
+                if (textoUsuario.toLowerCase().contains("marcar")) {
+
+                    sessao.setEstagio(TriagemStage.AGUARDANDO_NOME);
+                    return new BotResponseDTO("Ótimo! Vamos agendar.\n\nPara fazer seu cadastro, digite seu **Nome Completo**.");
+                
+                } 
+                else if (textoUsuario.toLowerCase().contains("cancelar")) {
+
+                    sessionService.clearSession(telefone);
+                    return new BotResponseDTO("A funcionalidade de cancelamento estará disponível em breve.\nSessão encerrada.");
+                
+                } 
+                else {
+
+                    return new BotResponseDTO(
+                        "Por favor, escolha uma das opções:",
+                        List.of("Marcar Consulta", "Cancelar Consulta")
+                    );
+
+                }
+
             case AGUARDANDO_NOME:
+
                 sessao.setNome(textoUsuario);
                 sessao.setEstagio(TriagemStage.AGUARDANDO_IDADE);
                 return new BotResponseDTO("Prazer, " + textoUsuario + "! \nAgora, por favor, me diga sua **Idade** (apenas números).");
 
             case AGUARDANDO_IDADE:
+
                 if (!textoUsuario.matches("\\d+")) {
                     return new BotResponseDTO("Por favor, digite apenas números para a idade.");
                 }
                 sessao.setIdade(textoUsuario);
                 sessao.setEstagio(TriagemStage.AGUARDANDO_SEXO);
                 return new BotResponseDTO("Certo. Qual seu **Sexo Biológico**?", List.of("Masculino", "Feminino"));
-           
-                case AGUARDANDO_SEXO:
+
+            case AGUARDANDO_SEXO:
+
                 sessao.setSexo(textoUsuario);
-                sessao.setEstagio(TriagemStage.TRIAGEM_IA);
-                return new BotResponseDTO("Cadastro concluído! ✅\n\nAgora me conte com detalhes: **O que você está sentindo?**");
-
-            case TRIAGEM_IA:
-                sessao.adicionarAoHistorico("Paciente: " + textoUsuario);
+                sessao.setEstagio(TriagemStage.AGUARDANDO_CPF);
                 
-                if (sessao.getPerguntasFeitas() < 5) {
-                    
-                    String respostaInvestigativa = ragQueryService.analisarSintomas(
-                        sessao.getHistoricoClinico().toString(), 
-                        sessao.getIdade(),
-                        sessao.getSexo()
-                    );
-
-                    if (!respostaInvestigativa.toUpperCase().contains("PRONTO")) {
-                        sessao.incrementarPerguntas();
-                        sessao.adicionarAoHistorico("Bot: " + respostaInvestigativa);
-                        return new BotResponseDTO(respostaInvestigativa);
-                    }
-                }
-                
-                
-                String perfilCompleto = String.format(
-                    "PACIENTE: %s, %s anos, %s.\nHISTÓRICO:\n%s", 
-                    sessao.getNome(), sessao.getIdade(), sessao.getSexo(), sessao.getHistoricoClinico()
+                return new BotResponseDTO(
+                    "Entendido.\n\n" +
+                    "Para finalizarmos seu cadastro no sistema da clínica, digite seu **CPF** (apenas números):"
                 );
-                String recomendacaoTexto = ragQueryService.obterRecomendacao(perfilCompleto);
 
-                String especialidade = ragQueryService.extrairEspecialidade(recomendacaoTexto);
-                sessao.setEspecialidadeDetectada(especialidade);
-                System.out.println("Especialidade detectada: " + especialidade);
-                List<MedicoDTO> medicos = adminService.buscarMedicos(especialidade);
-                sessao.setMedicosEncontrados(medicos);
+            case AGUARDANDO_CPF:
 
-                if (!medicos.isEmpty()) {
-                    sessao.setEstagio(TriagemStage.OFERECER_AGENDAMENTO);
-                    String msg = recomendacaoTexto + "\n\n" +
-                           "-----------------------------------\n" +
-                           "🔎 Identifiquei que um *" + especialidade + "* pode te ajudar.\n" +
-                           "Encontrei " + medicos.size() + " especialistas.\n" +
-                           "**Gostaria de marcar uma consulta agora?**";
-                    return new BotResponseDTO(msg, List.of("Sim","Não"));
-                } else {
-                    sessionService.clearSession(telefone);
-                    return new BotResponseDTO(recomendacaoTexto + "\n\n(No momento não temos médicos dessa especialidade disponíveis para agendamento online. Atendimento finalizado.)");
+                String cpfLimpo = textoUsuario.replaceAll("\\D", "");
+
+                if (cpfLimpo.length() != 11) {
+                    return new BotResponseDTO("O CPF deve conter 11 dígitos. Por favor, tente novamente (apenas números).");
                 }
 
+                sessao.setCpf(cpfLimpo);
 
-            case OFERECER_AGENDAMENTO:
-               if (textoUsuario.toLowerCase().contains("sim")) {
+                
+                List<String> especialidades = adminService.buscarEspecialidadesClinica(sessao.getClinicaIdSelecionada());
+                
+                List<BotResponseDTO.ListItemDTO> listaOpcoes = new ArrayList<>();
+
+                listaOpcoes.add(new BotResponseDTO.ListItemDTO(
+                    "OPCAO_TRIAGEM", 
+                    "🤖 Triagem Médica (IA)", 
+                    "Não sei qual escolher / Descrever sintomas"
+                ));
+
+                for (String esp : especialidades) {
+                    listaOpcoes.add(new BotResponseDTO.ListItemDTO(
+                        "ESPECIALIDADE_" + esp, 
+                        esp, 
+                        "Agendar direto com " + esp
+                    ));
+                }
+
+                sessao.setEstagio(TriagemStage.ESCOLHER_ESPECIALIDADE);
+
+                return new BotResponseDTO(
+                    "Cadastro realizado! ✅\n\n" +
+                    "Agora, selecione a **Especialidade** que você procura, ou escolha a **Triagem Médica** para que nossa IA te ajude:",
+                    "Ver Especialidades",
+                    listaOpcoes
+                );
+
+            case ESCOLHER_ESPECIALIDADE:
+
+                if (textoUsuario.equalsIgnoreCase("OPCAO_TRIAGEM") || textoUsuario.contains("Triagem")) {
+                    sessao.setFluxoTriagemCompleta(true); 
+                    sessao.setEstagio(TriagemStage.TRIAGEM_IA);
+                    return new BotResponseDTO("Sem problemas! Vou te fazer algumas perguntas para entender melhor o caso.\n\nPara começar: **O que você está sentindo?**");
+                } 
+                
+                else if (textoUsuario.startsWith("ESPECIALIDADE_")) {
+
+                    String especialidadeEscolhida = textoUsuario.replace("ESPECIALIDADE_", "");
                     
-                    String especialidadeDetectada = sessao.getEspecialidadeDetectada();
+                    sessao.setFluxoTriagemCompleta(false); 
+                    sessao.setEspecialidadeDetectada(especialidadeEscolhida); 
+                    sessao.setEstagio(TriagemStage.PERGUNTA_DESCRICAO_OPCIONAL);
                     
-                    List<SlotDisponivelDTO> slots = adminService.buscarDisponibilidadeCombo(especialidadeDetectada);
+                    return new BotResponseDTO(
+                        "Certo, vamos buscar horários para **" + especialidadeEscolhida + "**.\n\n" +
+                        "Antes de eu te mostrar a agenda, **você gostaria de descrever brevemente o que está sentindo?**\n" +
+                        "Isso ajuda o médico a se preparar para a consulta.",
+                        List.of("Sim, quero descrever", "Não, pular essa etapa")
+                    );
+                } 
+                
+                else {
+                    return new BotResponseDTO("Por favor, selecione uma das opções da lista acima.");
+                }
+
+            case PERGUNTA_DESCRICAO_OPCIONAL:
+                if (textoUsuario.toLowerCase().contains("sim") || textoUsuario.toLowerCase().contains("descrever")) {
+                    sessao.setEstagio(TriagemStage.TRIAGEM_IA);
+                    return new BotResponseDTO("Entendido. Por favor, conte-me em poucas palavras: **Quais são seus sintomas ou o motivo da consulta?**");
+                } 
+                
+                else {
+                    sessao.setResumoClinicoGerado("Paciente optou por não descrever sintomas previamente.");
                     
+                    String especialidade = sessao.getEspecialidadeDetectada();
+                    List<SlotDisponivelDTO> slots = adminService.buscarDisponibilidadeCombo(especialidade, sessao.getClinicaIdSelecionada());
+
                     if (slots.isEmpty()) {
                         sessionService.clearSession(telefone);
-                        return new BotResponseDTO("Poxa, verifiquei aqui e não encontrei horários livres para " + especialidadeDetectada + " nos próximos dias. Tente novamente mais tarde.");
+                        return new BotResponseDTO("Poxa, verifiquei aqui e não encontrei horários livres para " + especialidade + " nesta clínica nos próximos dias.");
                     }
 
                     List<BotResponseDTO.ListItemDTO> itensMenu = new ArrayList<>();
-                    
                     for (SlotDisponivelDTO slot : slots) {
                         String titulo = formatarDataCurta(slot.data()) + " às " + slot.horario().toString().substring(0, 5);
-                        
                         String descricao = slot.nomeMedico();
-                        if (slot.diaDaSemana() != null) {
-                            descricao += " • " + slot.diaDaSemana();
-                        }
-                        
                         String idUnico = "AGENDAR_" + slot.medicoId() + "_" + slot.data() + "_" + slot.horario();
-                        
                         itensMenu.add(new BotResponseDTO.ListItemDTO(idUnico, titulo, descricao));
                     }
                     
                     sessao.setEstagio(TriagemStage.CONFIRMAR_AGENDAMENTO);
                     
                     return new BotResponseDTO(
-                        "Encontrei estes horários disponíveis para você. \nToque no botão abaixo para ver as opções:", 
+                        "Ok! Indo direto para a agenda.\n" +
+                        "Aqui estão os horários disponíveis para **" + especialidade + "**:", 
                         "Ver Horários", 
                         itensMenu       
                     );
-
-                } else {
-                    sessionService.clearSession(telefone);
-                    return new BotResponseDTO("Tudo bem! Espero que melhore. Se precisar, mande um 'Oi'.");
                 }
 
-            // case ESCOLHER_MEDICO:
-            //     try {
-            //         int index = Integer.parseInt(textoUsuario.trim()) - 1;
-            //         if (index >= 0 && index < sessao.getMedicosEncontrados().size()) {
-            //             MedicoDTO medico = sessao.getMedicosEncontrados().get(index);
-            //             sessao.setMedicoSelecionado(medico);
-                        
-            //             sessao.setEstagio(TriagemStage.DEFINIR_DATA);
-            //             return new BotResponseDTO("Você escolheu: *" + medico.getNome() + "*.\n" +
-            //                    "Para qual dia você deseja ver a agenda? (Digite no formato **DD/MM/AAAA**, ex: " + 
-            //                    LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ")");
-            //         } else {
-            //             return new BotResponseDTO("Número inválido. Tente novamente.");
-            //         }
-            //     } catch (NumberFormatException e) {
-            //         return new BotResponseDTO("Por favor, digite apenas o número da opção.");
-            //     }
+            case TRIAGEM_IA:
+                sessao.adicionarAoHistorico("Paciente: " + textoUsuario);
 
-            // case DEFINIR_DATA:
-            //     try {
-            //         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            //         LocalDate data = LocalDate.parse(textoUsuario.trim(), formatter);
+                if (!sessao.isFluxoTriagemCompleta()) {
+                    String resumo = ragQueryService.gerarResumoClinicoEstruturado(
+                        sessao.getHistoricoClinico().toString(), 
+                        sessao.getNome()
+                    );
+                    sessao.setResumoClinicoGerado(resumo);
                     
-            //         if (data.isBefore(LocalDate.now())) {
-            //             return new BotResponseDTO("Essa data já passou. Por favor, escolha uma data futura (DD/MM/AAAA):");
-            //         }
+                    return buscarHorariosEGerarResposta(sessao, telefone);
+                }
 
-            //         sessao.setDataDesejada(data);
+                else {
+                    if (sessao.getPerguntasFeitas() < 5) {
+                        String respostaInvestigativa = ragQueryService.analisarSintomas(
+                            sessao.getHistoricoClinico().toString(), 
+                            sessao.getIdade(),
+                            sessao.getSexo()
+                        );
 
-            //         List<String> horarios = adminService.buscarHorarios(sessao.getMedicoSelecionado().getId(), data.toString());
+                        if (!respostaInvestigativa.toUpperCase().contains("PRONTO")) {
+                            sessao.incrementarPerguntas();
+                            sessao.adicionarAoHistorico("Bot: " + respostaInvestigativa);
+                            return new BotResponseDTO(respostaInvestigativa);
+                        }
+                    }
+                    
+                    String perfilCompleto = String.format(
+                        "PACIENTE: %s, %s anos, %s.\nHISTÓRICO:\n%s", 
+                        sessao.getNome(), sessao.getIdade(), sessao.getSexo(), sessao.getHistoricoClinico()
+                    );
+                    
+                    String recomendacaoTexto = ragQueryService.obterRecomendacao(perfilCompleto);
+                    String especialidadeIA = ragQueryService.extrairEspecialidade(recomendacaoTexto);
+                    
+                    sessao.setEspecialidadeDetectada(especialidadeIA);
+                    
+                    String resumo = ragQueryService.gerarResumoClinicoEstruturado(sessao.getHistoricoClinico().toString(), sessao.getNome());
+                    sessao.setResumoClinicoGerado(resumo);
 
-            //         if (horarios.isEmpty()) {
-            //             return new BotResponseDTO("O Dr(a). " + sessao.getMedicoSelecionado().getNome() + " não tem horários livres em " + textoUsuario + ".\n" +
-            //             "Por favor, digite outra data (DD/MM/AAAA):");
-            //         }
-
-            //         sessao.setEstagio(TriagemStage.ESCOLHER_HORARIO);
-            //         return new BotResponseDTO("Horários disponíveis para " + textoUsuario + ":\n\n" + 
-            //                String.join("  |  ", horarios) + 
-            //                "\n\nDigite o horário desejado (ex: 09:30):" );
-
-            //     } catch (DateTimeParseException e) {
-            //         return new BotResponseDTO("Data inválida. Certifique-se de usar o formato DD/MM/AAAA (ex: 25/12/2025).");
-            //     }
-
-            // case ESCOLHER_HORARIO:
-            //     try {
-            //         LocalTime horario = LocalTime.parse(textoUsuario.trim());
-            //         sessao.setHorarioSelecionado(horario);
-
-            //         String dadosPaciente = sessao.getNome() + ", " + sessao.getIdade() + " anos, " + sessao.getSexo();
-            //         String resumo = ragQueryService.gerarResumoClinicoEstruturado(sessao.getHistoricoClinico().toString(), dadosPaciente);
-            //         sessao.setResumoClinicoGerado(resumo);
-
-            //         sessao.setEstagio(TriagemStage.CONFIRMAR_AGENDAMENTO);
-            //         return new BotResponseDTO("📝 *Confirme seu Agendamento*\n\n" +
-            //                "👤 Paciente: " + sessao.getNome() + "\n" +
-            //                "👨‍⚕️ Médico: " + sessao.getMedicoSelecionado().getNome() + "\n" +
-            //                "📅 Data: " + sessao.getDataDesejada().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "\n" +
-            //                "⏰ Horário: " + horario + "\n" +
-            //                "🏥 Especialidade: " + sessao.getEspecialidadeDetectada() + "\n\n" +
-            //                "Digite **SIM** para confirmar.          ");          
-
-            //     } catch (DateTimeParseException e) {
-            //         return new BotResponseDTO("Formato de horário inválido. Digite exatamente como apareceu na lista (ex: 09:30).");
-            //     }
+                    BotResponseDTO respostaHorarios = buscarHorariosEGerarResposta(sessao, telefone);
+                    
+                    String msgFinal = recomendacaoTexto + "\n\n" + 
+                                      "-----------------------------------\n" +
+                                      "🔎 Com base nisso, busquei especialistas em *" + especialidadeIA + "* para você.\n" +
+                                      respostaHorarios.getTexto(); 
+                    
+                    return new BotResponseDTO(
+                        msgFinal, 
+                        respostaHorarios.getTextoBotaoLista(), 
+                        respostaHorarios.getItensLista()
+                    );
+            }
 
             case CONFIRMAR_AGENDAMENTO:
+
                 if (textoUsuario.startsWith("AGENDAR_")) {
                     try {
                         String[] partes = textoUsuario.split("_");
@@ -248,13 +340,9 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         sessao.setDataDesejada(LocalDate.parse(data));
                         sessao.setHorarioSelecionado(LocalTime.parse(hora));
                         
-                        if (sessao.getResumoClinicoGerado() == null) {
-                            String resumo = ragQueryService.gerarResumoClinicoEstruturado(sessao.getHistoricoClinico().toString(), sessao.getNome());
-                            sessao.setResumoClinicoGerado(resumo);
-                        }
-                        
                         return new BotResponseDTO(
                             "📝 *Confirmar Agendamento*\n\n" +
+                            "🏥 Clínica ID: " + sessao.getClinicaIdSelecionada() + "\n" + 
                             "📅 Data: " + formatarDataCurta(sessao.getDataDesejada()) + "\n" +
                             "⏰ Horário: " + sessao.getHorarioSelecionado() + "\n" +
                             "🩺 Especialidade: " + sessao.getEspecialidadeDetectada() + "\n\n" +
@@ -263,14 +351,14 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         );
                         
                     } catch (Exception e) {
-                        e.printStackTrace();
-                        return new BotResponseDTO("Ocorreu um erro ao processar sua escolha. Por favor, tente novamente.");
+                        return new BotResponseDTO("Ocorreu um erro ao processar sua escolha.");
                     }
                 }
                 
                 if (textoUsuario.toLowerCase().contains("sim") || textoUsuario.toLowerCase().contains("confirmar")) {
                     
                     boolean sucesso = adminService.agendarConsulta(
+                        sessao.getClinicaIdSelecionada(), 
                         sessao.getMedicoSelecionado().getId(),
                         sessao.getDataDesejada(),
                         sessao.getHorarioSelecionado(),
@@ -278,15 +366,16 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         telefone,
                         sessao.getIdade(),
                         sessao.getSexo(),
+                        sessao.getCpf(), 
                         sessao.getResumoClinicoGerado()
                     );
                     
                     sessionService.clearSession(telefone);
                     
                     if (sucesso) {
-                        return new BotResponseDTO("✅ *Agendamento Confirmado!* \nO médico já recebeu seu histórico.");
+                        return new BotResponseDTO("✅ *Agendamento Confirmado!* \nSeu CPF foi registrado e o médico já recebeu seu histórico.");
                     } else {
-                        return new BotResponseDTO("❌ Ops! Esse horário foi ocupado agora mesmo. Digite 'Oi' para tentar outro.");
+                        return new BotResponseDTO("❌ Ops! Esse horário foi ocupado agora mesmo.");
                     }
                 } 
                 
@@ -299,6 +388,44 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                 return new BotResponseDTO("Erro no fluxo. Digite 'reset' para reiniciar.");
         }
     }
+
+
+    private BotResponseDTO buscarHorariosEGerarResposta(UserSession sessao, String telefone) {
+
+        String especialidade = sessao.getEspecialidadeDetectada();
+        Long clinicaId = sessao.getClinicaIdSelecionada(); 
+
+
+        List<SlotDisponivelDTO> slots = adminService.buscarDisponibilidadeCombo(especialidade, clinicaId);
+
+        if (slots.isEmpty()) {
+            sessionService.clearSession(telefone);
+            return new BotResponseDTO("Poxa, verifiquei aqui e não encontrei horários livres para " + especialidade + " nesta clínica nos próximos dias.");
+        }
+
+        List<BotResponseDTO.ListItemDTO> itensMenu = new ArrayList<>();
+        
+        for (SlotDisponivelDTO slot : slots) {
+            String titulo = formatarDataCurta(slot.data()) + " às " + slot.horario().toString().substring(0, 5);
+            
+            String descricao = slot.nomeMedico();
+            if (slot.diaDaSemana() != null) descricao += " • " + slot.diaDaSemana();
+            
+            String idUnico = "AGENDAR_" + slot.medicoId() + "_" + slot.data() + "_" + slot.horario();
+            
+            itensMenu.add(new BotResponseDTO.ListItemDTO(idUnico, titulo, descricao));
+        }
+        
+        sessao.setEstagio(TriagemStage.CONFIRMAR_AGENDAMENTO);
+        
+        return new BotResponseDTO(
+            "Encontrei estes horários disponíveis para **" + especialidade + "**.\n" +
+            "Toque no botão abaixo para ver as opções:", 
+            "Ver Horários", 
+            itensMenu       
+        );
+    }
+
 
     private String formatarDataCurta(Object data) {
         try {

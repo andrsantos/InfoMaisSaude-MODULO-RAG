@@ -2,15 +2,22 @@ package com.RagArchitecture.InfoMaisSaude.enums;
 
 public enum TriagemStage {
     INICIO,
-    AGUARDANDO_TERMOS,             
+    AGUARDANDO_TERMOS,
+    
+    ESCOLHER_CLINICA,
+    ESCOLHER_ACAO,
+
     AGUARDANDO_NOME,    
     AGUARDANDO_IDADE,   
     AGUARDANDO_SEXO,    
+    AGUARDANDO_CPF,
+
+    ESCOLHER_ESPECIALIDADE,
+
+    PERGUNTA_DESCRICAO_OPCIONAL,
+
     TRIAGEM_IA,         
     FINALIZADO,
     OFERECER_AGENDAMENTO, 
-    ESCOLHER_MEDICO,     
-    DEFINIR_DATA,
-    ESCOLHER_HORARIO,
     CONFIRMAR_AGENDAMENTO 
 }

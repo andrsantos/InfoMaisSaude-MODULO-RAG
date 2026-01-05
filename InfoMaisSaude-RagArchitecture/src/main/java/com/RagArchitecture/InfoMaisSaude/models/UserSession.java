@@ -14,6 +14,10 @@ public class UserSession {
     private String nome;
     private String idade;
     private String sexo;
+    private String cpf;
+    private Long clinicaIdSelecionada;
+    private boolean fluxoTriagemCompleta;
+    private String especialidadeManual;
     private StringBuilder historicoClinico = new StringBuilder();
     private int perguntasFeitas = 0;
     private String especialidadeDetectada;
@@ -139,5 +143,42 @@ public class UserSession {
         this.resumoClinicoGerado = resumoClinicoGerado;
     }
 
+
+    public String getCpf() {
+        return this.cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public Long getClinicaIdSelecionada() {
+        return this.clinicaIdSelecionada;
+    }
+
+    public void setClinicaIdSelecionada(Long clinicaIdSelecionada) {
+        this.clinicaIdSelecionada = clinicaIdSelecionada;
+    }
+
+    public boolean isFluxoTriagemCompleta() {
+        return this.fluxoTriagemCompleta;
+    }
+
+    public boolean getFluxoTriagemCompleta() {
+        return this.fluxoTriagemCompleta;
+    }
+
+    public void setFluxoTriagemCompleta(boolean fluxoTriagemCompleta) {
+        this.fluxoTriagemCompleta = fluxoTriagemCompleta;
+    }
+
+    public String getEspecialidadeManual() {
+        return this.especialidadeManual;
+    }
+
+    public void setEspecialidadeManual(String especialidadeManual) {
+        this.especialidadeManual = especialidadeManual;
+    }
+    
 
 }

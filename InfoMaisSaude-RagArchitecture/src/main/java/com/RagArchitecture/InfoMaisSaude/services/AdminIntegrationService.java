@@ -1,10 +1,10 @@
 package com.RagArchitecture.InfoMaisSaude.services;
 
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.ClinicaDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginRequestDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.SlotDisponivelDTO;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -30,6 +30,8 @@ public class AdminIntegrationService {
 
     private String jwtToken;
     private final RestTemplate restTemplate = new RestTemplate();
+
+  
 
 
     private void autenticar() {
@@ -80,6 +82,51 @@ public class AdminIntegrationService {
         }
     }
 
+    public List<ClinicaDTO> buscarClinicas() {
+        System.out.println("Buscando clínicas");
+        String url = BASE_URL + "/api/clinicas/listar-resumo";
+
+        try {
+            ResponseEntity<List<ClinicaDTO>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(criarHeaders()),
+                new ParameterizedTypeReference<List<ClinicaDTO>>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("Erro ao buscar clinicas: " + e.getMessage());
+            if (e instanceof HttpClientErrorException.Forbidden) {
+                this.jwtToken = null; 
+            }
+            return Collections.emptyList();
+        }
+    }
+
+    public List<String> buscarEspecialidadesClinica(Long clinicaId){
+
+        System.out.println("Buscando especialidades da clínica");
+        String url = BASE_URL + "/api/clinicas/listar-especialidades/" + clinicaId;
+
+        try {
+            ResponseEntity<List<String>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(criarHeaders()),
+                new ParameterizedTypeReference<List<String>>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("Erro ao buscar especialidades da clinica: " + e.getMessage());
+            if (e instanceof HttpClientErrorException.Forbidden) {
+                this.jwtToken = null; 
+            }
+            return Collections.emptyList();
+        }
+
+    }
+
+
     public List<String> buscarHorarios(Long medicoId, String data) {
         String url = BASE_URL + "/api/agendamentos/disponibilidade?medicoId=" + medicoId + "&data=" + data;
 
@@ -97,8 +144,10 @@ public class AdminIntegrationService {
         }
     }
 
-    public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade){
-         String url = BASE_URL + "/api/agendamentos/disponibilidade-combo?especialidade=" + especialidade;
+public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade, Long clinicaId) {
+        
+        String url = BASE_URL + "/api/agendamentos/disponibilidade-combo?especialidade=" + especialidade + "&clinicaId=" + clinicaId;
+        
         try {
             ResponseEntity<List<SlotDisponivelDTO>> response = restTemplate.exchange(
                 url,
@@ -111,12 +160,11 @@ public class AdminIntegrationService {
             System.err.println("Erro ao buscar horários: " + e.getMessage());
             return Collections.emptyList();
         }
-
     }
 
 
-    public boolean agendarConsulta(Long medicoId, LocalDate data, LocalTime horario, 
-                                   String nome, String telefone, String idade, String sexo, String resumo) {
+    public boolean agendarConsulta(Long clinicaId, Long medicoId, LocalDate data, LocalTime horario, 
+                                   String nome, String telefone, String idade, String sexo, String cpf, String resumo) {
         
         String url = BASE_URL + "/api/agendamentos/agendar";
 
@@ -153,6 +201,10 @@ public class AdminIntegrationService {
             return "❌ Erro: " + e.getMessage();
         }
     }
+
+
+
+    
 
     private record AgendamentoPayload(
         Long medicoId,

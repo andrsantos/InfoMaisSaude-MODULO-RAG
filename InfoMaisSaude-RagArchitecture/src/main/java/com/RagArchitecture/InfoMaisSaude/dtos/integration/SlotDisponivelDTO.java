@@ -9,5 +9,6 @@ public record SlotDisponivelDTO(
     String especialidade,
     LocalDate data,       
     LocalTime horario,    
-    String diaDaSemana    
+    String diaDaSemana,
+    Long clinicaId    
 ) {}
