@@ -26,6 +26,7 @@ public class UserSession {
     private LocalDate dataDesejada;
     private LocalTime horarioSelecionado;
     private String resumoClinicoGerado; 
+    private Long consultaIdParaCancelar;
 
     public UserSession(String telefone) {
         this.telefone = telefone;
@@ -179,6 +180,10 @@ public class UserSession {
     public void setEspecialidadeManual(String especialidadeManual) {
         this.especialidadeManual = especialidadeManual;
     }
+
+    public Long getConsultaIdParaCancelar() { return consultaIdParaCancelar; }
+    
+    public void setConsultaIdParaCancelar(Long consultaIdParaCancelar) { this.consultaIdParaCancelar = consultaIdParaCancelar; }
     
 
 }

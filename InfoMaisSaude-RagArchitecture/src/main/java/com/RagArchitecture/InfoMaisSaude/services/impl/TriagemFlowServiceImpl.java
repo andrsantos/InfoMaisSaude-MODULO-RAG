@@ -2,6 +2,7 @@ package com.RagArchitecture.InfoMaisSaude.services.impl;
 
 import com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.ClinicaDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.ConsultaAgendadaDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.SlotDisponivelDTO;
 import com.RagArchitecture.InfoMaisSaude.enums.TriagemStage;
@@ -29,6 +30,8 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
     @Autowired
     private AdminIntegrationService adminService; 
+
+
 
  
 
@@ -131,9 +134,34 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                 
                 } 
                 else if (textoUsuario.toLowerCase().contains("cancelar")) {
+                    
+                    List<ConsultaAgendadaDTO> consultas = adminService.buscarConsultasAtivas(telefone, sessao.getClinicaIdSelecionada());
+                    
+                    if (consultas.isEmpty()) {
+                        sessionService.clearSession(telefone);
+                        return new BotResponseDTO("Não encontrei nenhuma consulta agendada para seu número nesta clínica.\n\nSessão encerrada.");
+                    }
 
-                    sessionService.clearSession(telefone);
-                    return new BotResponseDTO("A funcionalidade de cancelamento estará disponível em breve.\nSessão encerrada.");
+                    List<BotResponseDTO.ListItemDTO> listaConsultas = new ArrayList<>();
+                    
+                    for (ConsultaAgendadaDTO c : consultas) {
+                        String dataFormatada = formatarDataCurta(c.data());
+                        String horaFormatada = c.horario().toString().substring(0, 5);
+                        
+                        listaConsultas.add(new BotResponseDTO.ListItemDTO(
+                            "CANCEL_ID_" + c.id(), 
+                            dataFormatada + " às " + horaFormatada, 
+                            c.especialidade() + " - " + c.nomeMedico() 
+                        ));
+                    }
+                    
+                    sessao.setEstagio(TriagemStage.ESCOLHER_CONSULTA_CANCELAR);
+                    
+                    return new BotResponseDTO(
+                        "Encontrei os seguintes agendamentos. Qual deles você deseja cancelar?",
+                        "Selecione",
+                        listaConsultas
+                    );
                 
                 } 
                 else {
@@ -143,6 +171,51 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         List.of("Marcar Consulta", "Cancelar Consulta")
                     );
 
+                }
+            
+            case ESCOLHER_CONSULTA_CANCELAR:
+                if (textoUsuario.startsWith("CANCEL_ID_")) {
+                    try {
+                        Long idParaCancelar = Long.parseLong(textoUsuario.replace("CANCEL_ID_", ""));
+   
+                        sessao.setConsultaIdParaCancelar(idParaCancelar);
+                        
+                        sessao.setEstagio(TriagemStage.CONFIRMAR_CANCELAMENTO);
+                        
+                        return new BotResponseDTO(
+                            "⚠️ **Confirmação**\n\n" +
+                            "Você realmente deseja cancelar este agendamento?\n" +
+                            "Essa ação não poderá ser desfeita.",
+                            List.of("Sim, cancelar", "Não, voltar") 
+                        );
+                        
+                    } catch (Exception e) {
+                        return new BotResponseDTO("Erro ao selecionar consulta. Tente novamente.");
+                    }
+                } else {
+                    return new BotResponseDTO("Por favor, selecione uma opção da lista.");
+                }
+
+            case CONFIRMAR_CANCELAMENTO:
+
+                if (textoUsuario.toLowerCase().contains("sim") || textoUsuario.toLowerCase().contains("cancelar")) {
+                    
+                    boolean sucesso = adminService.cancelarConsulta(
+                        sessao.getConsultaIdParaCancelar(),
+                        telefone
+                    );
+                    
+                    sessionService.clearSession(telefone);
+                    
+                    if (sucesso) {
+                        return new BotResponseDTO("✅ Agendamento cancelado com sucesso.\n\nSe precisar marcar outro horário, basta mandar um 'Oi'.");
+                    } else {
+                        return new BotResponseDTO("❌ Ocorreu um erro ao tentar cancelar. Por favor, entre em contato com a recepção.");
+                    }
+                } 
+                else {
+                    sessionService.clearSession(telefone);
+                    return new BotResponseDTO("Operação abortada. Seu agendamento segue confirmado! 👍");
                 }
 
             case AGUARDANDO_NOME:
@@ -339,6 +412,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         sessao.setMedicoSelecionado(medicoFake);
                         sessao.setDataDesejada(LocalDate.parse(data));
                         sessao.setHorarioSelecionado(LocalTime.parse(hora));
+
                         
                         return new BotResponseDTO(
                             "📝 *Confirmar Agendamento*\n\n" +

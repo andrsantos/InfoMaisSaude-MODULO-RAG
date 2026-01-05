@@ -1,6 +1,8 @@
 package com.RagArchitecture.InfoMaisSaude.services;
 
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.CancelamentoRequestDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.ClinicaDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.ConsultaAgendadaDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginRequestDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.LoginResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
@@ -13,6 +15,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -168,8 +171,8 @@ public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade, 
         
         String url = BASE_URL + "/api/agendamentos/agendar";
 
-        AgendamentoPayload payload = new AgendamentoPayload(
-            medicoId, data, horario, nome, telefone, idade, sexo, resumo
+        AgendamentoPayload payload = new AgendamentoPayload(clinicaId,
+            medicoId, data, horario, nome, telefone, idade, sexo, cpf, resumo
         );
 
         try {
@@ -187,6 +190,40 @@ public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade, 
             return false;
         }
     }
+
+    public List<ConsultaAgendadaDTO> buscarConsultasAtivas(String telefone, Long clinicaId) {
+        String url = BASE_URL + "/api/agendamentos/paciente/" + telefone + "/clinica/" + clinicaId + "/ativas";
+        
+        try {
+            ResponseEntity<List<ConsultaAgendadaDTO>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(criarHeaders()),
+                new ParameterizedTypeReference<List<ConsultaAgendadaDTO>>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            System.err.println("Erro ao buscar consultas ativas: " + e.getMessage());
+            return new ArrayList<>(); 
+        }
+    }
+
+    public boolean cancelarConsulta(Long consultaId, String telefonePaciente) {
+        
+        String url = BASE_URL + "/api/consultas/" + consultaId + "/cancelar-paciente?telefone=" + telefonePaciente;
+        
+        String motivoAutomatico = "Solicitado pelo paciente via WhatsApp";
+        var payload = new CancelamentoRequestDTO(motivoAutomatico);
+
+        try {
+            restTemplate.postForEntity(url, new HttpEntity<>(payload, criarHeaders()), Void.class);
+            return true;
+        } catch (Exception e) {
+            System.err.println("Erro ao cancelar consulta: " + e.getMessage());
+            return false;
+        }
+    }
+
 
 
     public String testarConexao() {
@@ -207,6 +244,7 @@ public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade, 
     
 
     private record AgendamentoPayload(
+        Long clinicaId,
         Long medicoId,
         LocalDate data,
         LocalTime horario,
@@ -214,6 +252,7 @@ public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade, 
         String telefonePaciente,
         String idade,
         String sexo,
+        String cpf,
         String resumoClinico
     ) {}
 }
