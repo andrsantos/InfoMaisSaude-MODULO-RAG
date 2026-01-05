@@ -228,7 +228,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         "Certo, vamos buscar horários para **" + especialidadeEscolhida + "**.\n\n" +
                         "Antes de eu te mostrar a agenda, **você gostaria de descrever brevemente o que está sentindo?**\n" +
                         "Isso ajuda o médico a se preparar para a consulta.",
-                        List.of("Sim, quero descrever", "Não, pular essa etapa")
+                        List.of("Sim, descrever", "Não, pular")
                     );
                 } 
                 
