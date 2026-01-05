@@ -2,6 +2,7 @@ package com.RagArchitecture.InfoMaisSaude.controllers;
 
 import com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayloadDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.NotificacaoPosConsultaDTO;
 import com.RagArchitecture.InfoMaisSaude.services.AdminIntegrationService;
 import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -288,6 +289,34 @@ public class WhatsAppWebhookController {
         try {
             return Optional.of(payload.entry()[0].changes()[0].value().messages()[0].from());
         } catch (Exception e) { return Optional.empty(); }
+    }
+
+    @PostMapping("/notificar-encerramento")
+    public ResponseEntity<Void> notificarEncerramento(@RequestBody NotificacaoPosConsultaDTO dto) {
+        try {
+            System.out.println("Recebendo solicitação de notificação para: " + dto.nomePaciente());
+
+            String mensagemTexto = String.format(
+                "Olá, *%s*! 👋\n\n" +
+                "Sua consulta com *%s* foi finalizada.\n\n" +
+                "📝 *Recomendações e Prescrições:*\n" +
+                "%s\n\n" +
+                "Se tiver dúvidas, entre em contato.\n" +
+                "_Info + Saúde - Cuidando de você._",
+                dto.nomePaciente(),
+                dto.nomeMedico(),
+                dto.prescricao()
+            );
+
+            String telefoneDestino = dto.telefone(); 
+            enviarRespostaWhatsApp(telefoneDestino, mensagemTexto);
+
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            System.err.println("Erro ao notificar paciente: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
    
