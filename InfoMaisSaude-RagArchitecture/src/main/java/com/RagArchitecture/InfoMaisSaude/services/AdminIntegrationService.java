@@ -210,7 +210,7 @@ public List<SlotDisponivelDTO> buscarDisponibilidadeCombo(String especialidade, 
 
     public boolean cancelarConsulta(Long consultaId, String telefonePaciente) {
         
-        String url = BASE_URL + "/api/consultas/" + consultaId + "/cancelar-paciente?telefone=" + telefonePaciente;
+        String url = BASE_URL + "/api/agendamentos/" + consultaId + "/cancelar-paciente?telefone=" + telefonePaciente;
         
         String motivoAutomatico = "Solicitado pelo paciente via WhatsApp";
         var payload = new CancelamentoRequestDTO(motivoAutomatico);
