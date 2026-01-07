@@ -2,6 +2,7 @@ package com.RagArchitecture.InfoMaisSaude.controllers;
 
 import com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.WhatsAppPayloadDTO;
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.NotificacaoCancelamentoDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.NotificacaoPosConsultaDTO;
 import com.RagArchitecture.InfoMaisSaude.services.AdminIntegrationService;
 import com.RagArchitecture.InfoMaisSaude.services.TriagemFlowService;
@@ -315,6 +316,34 @@ public class WhatsAppWebhookController {
 
         } catch (Exception e) {
             System.err.println("Erro ao notificar paciente: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/notificar-cancelamento")
+    public ResponseEntity<Void> notificarCancelamento(@RequestBody NotificacaoCancelamentoDTO dto) {
+        try {
+            System.out.println("Enviando aviso de cancelamento para: " + dto.nomePaciente());
+
+            String mensagemTexto = String.format(
+                "⚠️ *Aviso de Cancelamento* ⚠️\n\n" +
+                "Olá, *%s*.\n\n" +
+                "Informamos que sua consulta com *%s*, agendada para *%s*, precisou ser cancelada.\n\n" +
+                "🛑 *Motivo:* %s\n\n" +
+                "Pedimos desculpas pelo transtorno. Para reagendar, basta responder a esta mensagem com um 'Oi'.\n" +
+                "_Info + Saúde_",
+                dto.nomePaciente(),
+                dto.nomeMedico(),
+                dto.dataHorario(),
+                dto.motivo()
+            );
+
+            enviarRespostaWhatsApp(dto.telefone(), mensagemTexto);
+
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            System.err.println("Erro ao enviar notificação de cancelamento: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
