@@ -185,6 +185,17 @@ public class WhatsAppWebhookController {
     }
 
     private void enviarListaWhatsApp(String destinatario, String textoMensagem, String textoBotao, java.util.List<com.RagArchitecture.InfoMaisSaude.dtos.BotResponseDTO.ListItemDTO> itens) {
+        
+        String textoCorpoLista = textoMensagem;
+
+        if (textoMensagem.length() > 900) {
+            System.out.println("Texto muito longo para lista (" + textoMensagem.length() + " chars). Enviando separado.");
+            
+            enviarRespostaWhatsApp(destinatario, textoMensagem);
+            
+            textoCorpoLista = "🔎 Com base na triagem, encontrei estes especialistas e horários disponíveis. Toque em 'Ver Horários' para agendar:";
+        }
+
         String url = "https://graph.facebook.com/v21.0/" + META_PHONE_ID + "/messages";
 
         try {
@@ -196,8 +207,13 @@ public class WhatsAppWebhookController {
             com.fasterxml.jackson.databind.node.ObjectNode interactive = objectMapper.createObjectNode();
             interactive.put("type", "list");
 
+            com.fasterxml.jackson.databind.node.ObjectNode header = objectMapper.createObjectNode();
+            header.put("type", "text");
+            header.put("text", "Agendamento Disponível");
+            interactive.set("header", header);
+
             com.fasterxml.jackson.databind.node.ObjectNode body = objectMapper.createObjectNode();
-            body.put("text", textoMensagem);
+            body.put("text", textoCorpoLista); 
             interactive.set("body", body);
 
             com.fasterxml.jackson.databind.node.ObjectNode action = objectMapper.createObjectNode();
@@ -205,7 +221,7 @@ public class WhatsAppWebhookController {
 
             com.fasterxml.jackson.databind.node.ArrayNode sections = objectMapper.createArrayNode();
             com.fasterxml.jackson.databind.node.ObjectNode section = objectMapper.createObjectNode();
-            section.put("title", "Disponibilidade"); 
+            section.put("title", "Horários"); 
 
             com.fasterxml.jackson.databind.node.ArrayNode rows = objectMapper.createArrayNode();
             
@@ -233,8 +249,7 @@ public class WhatsAppWebhookController {
             root.set("interactive", interactive);
 
             String jsonBody = objectMapper.writeValueAsString(root);
-            System.out.println("JSON LISTA: " + jsonBody); 
-
+            
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
             headers.setBearerAuth(META_API_TOKEN);
@@ -247,7 +262,6 @@ public class WhatsAppWebhookController {
             e.printStackTrace();
         }
     }
-
 
     private Optional<String> extractUserText(WhatsAppPayloadDTO payload) {
     try {
