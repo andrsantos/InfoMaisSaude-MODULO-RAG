@@ -52,10 +52,16 @@ public class RAGIngestionServiceImpl implements RAGIngestionService, org.springf
 
     public void setupDatabase() {
         try {
+            
+            log.warn("⚠️ LIMPANDO TABELAS ANTIGAS PARA RECRIAR ESTRUTURA...");
+            jdbcTemplate.execute("DROP TABLE IF EXISTS conhecimento_clinico CASCADE");
+            jdbcTemplate.execute("DROP TABLE IF EXISTS especialidades CASCADE");
+            jdbcTemplate.execute("DROP TABLE IF EXISTS " + vectorTableName + " CASCADE");
+
+
             log.info("Configurando extensão vector...");
             jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector;");
 
-            // 1. Cria a Tabela do Spring AI (Vector Store)
             String createVectorTable = String.format("""
                 CREATE TABLE IF NOT EXISTS %s (
                     id UUID PRIMARY KEY,
@@ -66,7 +72,6 @@ public class RAGIngestionServiceImpl implements RAGIngestionService, org.springf
                 """, vectorTableName, vectorDimension);
             jdbcTemplate.execute(createVectorTable);
 
-            // 2. Tabela Pai: Especialidades (Dados Administrativos)
             jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS especialidades (
                     id BIGSERIAL PRIMARY KEY,
@@ -76,7 +81,6 @@ public class RAGIngestionServiceImpl implements RAGIngestionService, org.springf
                 );
             """);
 
-            // 3. Tabela Filha: Conhecimento Clínico (Dados para o RAG)
             jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS conhecimento_clinico (
                     id BIGSERIAL PRIMARY KEY,
