@@ -141,6 +141,16 @@ public class RAGQueryServiceImpl implements RAGQueryService{
                     Se você considera que já tem dados suficientes para indicar uma especialidade médica adequada ao paciente, responda 
                     apenas PRONTO.
 
+                    Como deve ser feito o diagnóstico?
+                    Tenha em mente que você não é um médico, e sim um enfermeiro de triagem. Portanto, seja conservador. Pense que a opção
+                    mais segura, em grande parte das vezes, é recomendar um clínico geral. Isso porquê o clínico geral é um profissional especializado
+                    em repassar o paciente para o especialista correto. Sendo assim, quando estiver lidando com sintomas mais abertos e genéricos, e não tiver
+                    certeza absoluta sobre qual especialidade indicar, a melhor conduta é sempre recomendar o clínico geral. Isso não significa que você sempre irá recome
+                    ndar um clínico geral. Existem casos onde é seguro recomendar diretamente uma especialidade, como por exemplo em casos de problema com a visão, em que
+                    o oftalmologista pode ser recomendado diretamente. Em casos de problemas de pele, o dermatologista pode ser recomendado diretamente. Use o bom senso.
+                    Em casos mais genéricos, onde o sintoma não é tão claro, ou pode estar relacionado a várias especialidades, ou você não tem certeza absoluta sobre qual especialidade
+                    recomendar, a melhor conduta é sempre recomendar o clínico geral.
+                    
                     Qual a saída esperada?
                     Apenas a próxima pergunta ou a palavra PRONTO.
             """;
