@@ -150,6 +150,20 @@ public class RAGQueryServiceImpl implements RAGQueryService{
                     o oftalmologista pode ser recomendado diretamente. Em casos de problemas de pele, o dermatologista pode ser recomendado diretamente. Use o bom senso.
                     Em casos mais genéricos, onde o sintoma não é tão claro, ou pode estar relacionado a várias especialidades, ou você não tem certeza absoluta sobre qual especialidade
                     recomendar, a melhor conduta é sempre recomendar o clínico geral.
+                    Exemplos de sintomas que indicam diretamente uma especialidade (sem passar pelo clínico geral):
+                    - Problemas de visão: Oftalmologista
+                    - Problemas de pele: Dermatologista
+                    - Dor de dente: Dentista
+                    Exemplos de sintomas que indicam um clínico geral:
+                    - Dor de cabeça
+                    - Febre
+                    - Dor abdominal
+                    - Mal estar geral
+                    - Tosse
+                    - Catarro
+                    - Garganta inflamada
+                    - Dor no corpo
+                    - Entre outros sintomas mais genéricos
 
                     REGRAS DE OURO ANTI-ALUCINAÇÃO (LEIA COM ATENÇÃO):
                     1. **VERDADE DO USUÁRIO:** Ao descrever o caso, cite APENAS os sintomas que o usuário EXPLICITAMENTE relatou.
