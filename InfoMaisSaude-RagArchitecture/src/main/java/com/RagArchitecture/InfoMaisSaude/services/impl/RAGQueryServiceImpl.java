@@ -34,11 +34,10 @@ public class RAGQueryServiceImpl implements RAGQueryService{
         1. Analise os sintomas do usuário.
         2. Compare os sintomas com os documentos de especialidades no contexto.
         3. Determine qual especialidade é a MAIS adequada.
-        4. Responda com o nome da especialidade e uma breve justificativa de por que ela foi escolhida, com base nos sintomas.
+        4. Responda com o nome da especialidade e uma breve justificativa de por que ela foi escolhida, com base nos sintomas. Não se alongue demais, e também não dê nenhum tipo de diagnóstico, apenas explique o porquê você acredita que aquela especialidade é a mais adequada.
         5. Se os sintomas do usuário não parecerem claros ou não corresponderem a nenhum documento de contexto, responda que você não encontrou uma especialidade adequada.
         6. **SEMPRE**, sem exceção, finalize sua resposta com o aviso legal:
            "Atenção: Esta é uma sugestão e não substitui uma consulta ou diagnóstico médico. Procure um profissional de saúde."
-        7. Sugira possíveis cuidados paliativos para o tratamento dos sintomas antes da consulta médica.
         """;
 
     public String classificarIntencao(String textoUsuario) {
