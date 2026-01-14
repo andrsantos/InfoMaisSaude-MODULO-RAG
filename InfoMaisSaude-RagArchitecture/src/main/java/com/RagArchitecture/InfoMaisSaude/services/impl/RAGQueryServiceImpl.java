@@ -130,6 +130,8 @@ public class RAGQueryServiceImpl implements RAGQueryService{
                     se determinado sintoma é forte, médio ou fraco; se existem outros sintomas associados; 
                     se o paciente tem algum histórico prévio importante para a investigação; e etc. 
                     Não se prenda a apenas essas perguntas, são apenas exemplos de qual direção você deve seguir para diagnosticar bem.
+                    Outra coisa boa que você pode fazer é perguntar se o paciente possui alguma comorbidade que possa ter relação com um determinado sintoma relatado. Por exemplo, se o paciente relata incontinência urinária, pode ser uma boa perguntá-lo se ele não tem diabetes, uma vez que este sintoma tem uma certa correlação com a diabetes. Este é um exemplo apenas, que você pode aplicar para outros casos semelhantes.
+
 
                     Qual deve ser o seu estilo de conversa?
                     Como dito antes, converse de forma simplificada, pensando sempre que o paciente é uma pessoa simplória, 
