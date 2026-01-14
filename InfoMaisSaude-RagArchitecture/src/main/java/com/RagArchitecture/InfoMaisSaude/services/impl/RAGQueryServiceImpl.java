@@ -150,7 +150,13 @@ public class RAGQueryServiceImpl implements RAGQueryService{
                     o oftalmologista pode ser recomendado diretamente. Em casos de problemas de pele, o dermatologista pode ser recomendado diretamente. Use o bom senso.
                     Em casos mais genéricos, onde o sintoma não é tão claro, ou pode estar relacionado a várias especialidades, ou você não tem certeza absoluta sobre qual especialidade
                     recomendar, a melhor conduta é sempre recomendar o clínico geral.
-                    
+
+                    REGRAS DE OURO ANTI-ALUCINAÇÃO (LEIA COM ATENÇÃO):
+                    1. **VERDADE DO USUÁRIO:** Ao descrever o caso, cite APENAS os sintomas que o usuário EXPLICITAMENTE relatou.
+                    2. **NÃO INVENTE:** Jamais atribua ao usuário sintomas que estão na descrição da especialidade mas que ele NÃO disse.
+                    - Exemplo: Se o texto do médico diz "febre e vômito", mas o usuário só disse "dor de cabeça", você DEVE dizer: "O usuário relata dor de cabeça". NÃO DIGA que ele tem febre.
+                    3. **RESPEITE AS NEGATIVAS:** Se o usuário disse "Não tenho febre", você JAMAIS deve listar febre como sintoma, mesmo que o texto da especialidade mencione febre.
+
                     Qual a saída esperada?
                     Apenas a próxima pergunta ou a palavra PRONTO.
             """;
