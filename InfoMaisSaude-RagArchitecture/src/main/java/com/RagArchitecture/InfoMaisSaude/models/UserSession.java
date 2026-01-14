@@ -1,5 +1,6 @@
 package com.RagArchitecture.InfoMaisSaude.models;
 
+import com.RagArchitecture.InfoMaisSaude.dtos.integration.ClinicaDTO;
 import com.RagArchitecture.InfoMaisSaude.dtos.integration.MedicoDTO;
 import com.RagArchitecture.InfoMaisSaude.enums.TriagemStage;
 import java.time.LocalDate;
@@ -27,6 +28,8 @@ public class UserSession {
     private LocalTime horarioSelecionado;
     private String resumoClinicoGerado; 
     private Long consultaIdParaCancelar;
+    private String nomeClinicaSelecionada;
+    private List<ClinicaDTO> clinicasCache = new ArrayList<>();
 
     public UserSession(String telefone) {
         this.telefone = telefone;
@@ -180,6 +183,24 @@ public class UserSession {
     public void setEspecialidadeManual(String especialidadeManual) {
         this.especialidadeManual = especialidadeManual;
     }
+
+
+    public String getNomeClinicaSelecionada() {
+        return this.nomeClinicaSelecionada;
+    }
+
+    public void setNomeClinicaSelecionada(String nomeClinicaSelecionada) {
+        this.nomeClinicaSelecionada = nomeClinicaSelecionada;
+    }
+
+    public List<ClinicaDTO> getClinicasCache() {
+        return this.clinicasCache;
+    }
+
+    public void setClinicasCache(List<ClinicaDTO> clinicasCache) {
+        this.clinicasCache = clinicasCache;
+    }
+
 
     public Long getConsultaIdParaCancelar() { return consultaIdParaCancelar; }
     

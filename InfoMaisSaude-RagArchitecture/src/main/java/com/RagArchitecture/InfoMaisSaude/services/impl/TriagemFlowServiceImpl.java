@@ -41,7 +41,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
         if (textoUsuario.equalsIgnoreCase("reset") || textoUsuario.equalsIgnoreCase("sair")) {
             sessionService.clearSession(telefone);
-            return new BotResponseDTO("Sua sessão foi reiniciada. Digite 'Oi' para começar uma nova triagem."); 
+            return new BotResponseDTO("Sua sessão foi reiniciada. Digite 'Oi' para começar um novo atendimento."); 
         }
 
         switch (sessao.getEstagio()) {
@@ -68,6 +68,8 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                     if(clinicas.isEmpty()){
                         return new BotResponseDTO("Desculpe, não encontrei clínicas no nosso sistema");
                     }
+
+                    sessao.setClinicasCache(clinicas);
 
                     List<BotResponseDTO.ListItemDTO> listaClinicas = new ArrayList<>();
 
@@ -114,13 +116,22 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                 if (clinicaId != null) {
 
                 sessao.setClinicaIdSelecionada(clinicaId);
+                Long finalId = clinicaId;
+                String nomeEncontrado = sessao.getClinicasCache().stream()
+                .filter(c -> c.id().equals(finalId))
+                .findFirst()
+                .map(ClinicaDTO::nome)
+                .orElse("Clínica Info+Saúde"); 
+
+                sessao.setNomeClinicaSelecionada(nomeEncontrado);
+                
+                sessao.setClinicasCache(new ArrayList<>());
                 sessao.setEstagio(TriagemStage.ESCOLHER_ACAO);
             
                 return new BotResponseDTO(
-                "Clínica selecionada com sucesso! 🏥\n\nO que você deseja fazer agora?",
-                List.of("Marcar Consulta", "Cancelar Consulta")
+                            "Você selecionou a *" + nomeEncontrado + "*! 🏥\n\nO que você deseja fazer agora?",
+                            List.of("Marcar Consulta", "Cancelar Consulta")
                 );
-
                 } else {
                 return new BotResponseDTO("Não entendi qual clínica você escolheu. Por favor, tente novamente pela lista.");
             }
@@ -260,8 +271,8 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
                 listaOpcoes.add(new BotResponseDTO.ListItemDTO(
                     "OPCAO_TRIAGEM", 
-                    "🤖 Triagem Médica (IA)", 
-                    "Não sei qual escolher / Descrever sintomas"
+                    "🤖 Triagem Médica", 
+                    "Não sabe qual escolher? Deixe a IA te ajudar!"
                 ));
 
                 for (String esp : especialidades) {
@@ -276,7 +287,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
                 return new BotResponseDTO(
                     "Cadastro realizado! ✅\n\n" +
-                    "Agora, selecione a **Especialidade** que você procura, ou escolha a **Triagem Médica** para que nossa IA te ajude:",
+                    "Agora, selecione a **Especialidade** que você procura, ou escolha a **Triagem Médica** caso não saiba qual escolher:",
                     "Ver Especialidades",
                     listaOpcoes
                 );
@@ -416,7 +427,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         
                         return new BotResponseDTO(
                             "📝 *Confirmar Agendamento*\n\n" +
-                            "🏥 Clínica ID: " + sessao.getClinicaIdSelecionada() + "\n" + 
+                            "🏥 Nome da Clínica: " + sessao.getNomeClinicaSelecionada() + "\n" + 
                             "📅 Data: " + formatarDataCurta(sessao.getDataDesejada()) + "\n" +
                             "⏰ Horário: " + sessao.getHorarioSelecionado() + "\n" +
                             "🩺 Especialidade: " + sessao.getEspecialidadeDetectada() + "\n\n" +
