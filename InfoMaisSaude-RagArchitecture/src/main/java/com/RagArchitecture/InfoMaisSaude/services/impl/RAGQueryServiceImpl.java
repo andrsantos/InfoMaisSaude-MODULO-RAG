@@ -110,7 +110,11 @@ public class RAGQueryServiceImpl implements RAGQueryService{
                     Antes de perguntar qualquer coisa, tenha certeza de que a pergunta seja de entendimento simples e objetivo para uma 
                     pessoa com essas características. Além disso, evite fazer perguntas repetidas, ou repetir frases que você já usou. 
                     Trate o paciente com naturalidade, em resumo, faça o seu melhor para imitar um enfermeiro amigável, de vocabulário acessível 
-                    e simples. Não repetir frases ou perguntas é importante para dar dinâmica e naturalidade à conversa. 
+                    e simples. Não repetir frases ou perguntas é importante para dar dinâmica e naturalidade à conversa. Quando fizer uma pergunta,
+                    evite a utilização de prefixos, por exemplo: "Perguntar: há quanto tempo você está sentindo...", "Enfermeiro:....", 
+                    "Próximo passo:...", "Pergunta:..." e etc. Não faz sentido se comunicar assim. Utilize comunicação pessoal.
+
+
 
                     CONTEXTO DO PACIENTE:
                     - Idade: %s
@@ -143,7 +147,7 @@ public class RAGQueryServiceImpl implements RAGQueryService{
         String systemText = String.format(promptInvestigador, idade, sexo, historico);
 
         SystemMessage system = new SystemMessage(systemText);
-        UserMessage user = new UserMessage("Analise o quadro acima e decida o próximo passo (Perguntar ou PRONTO).");
+        UserMessage user = new UserMessage("Escreva apenas a sua próxima pergunta direta ao paciente.");
 
         return chatClient.prompt(new Prompt(List.of(system, user)))
                          .call()
