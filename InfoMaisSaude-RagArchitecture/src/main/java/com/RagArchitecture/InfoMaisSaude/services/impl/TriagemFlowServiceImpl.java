@@ -123,7 +123,14 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                 .map(ClinicaDTO::nome)
                 .orElse("Clínica Info+Saúde"); 
 
+                 String enderecoEncontrado = sessao.getClinicasCache().stream()
+                .filter(c -> c.id().equals(finalId))
+                .findFirst()
+                .map(ClinicaDTO::endereco)
+                .orElse("Endereço Info+Saúde"); 
+
                 sessao.setNomeClinicaSelecionada(nomeEncontrado);
+                sessao.setEnderecoClinicaSelecionada(enderecoEncontrado);
                 
                 sessao.setClinicasCache(new ArrayList<>());
                 sessao.setEstagio(TriagemStage.ESCOLHER_ACAO);
@@ -428,6 +435,7 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
                         return new BotResponseDTO(
                             "📝 *Confirmar Agendamento*\n\n" +
                             "🏥 Nome da Clínica: " + sessao.getNomeClinicaSelecionada() + "\n" + 
+                            "📍 Endereço: " + sessao.getEnderecoClinicaSelecionada() + "\n" +
                             "📅 Data: " + formatarDataCurta(sessao.getDataDesejada()) + "\n" +
                             "⏰ Horário: " + sessao.getHorarioSelecionado() + "\n" +
                             "🩺 Especialidade: " + sessao.getEspecialidadeDetectada() + "\n\n" +

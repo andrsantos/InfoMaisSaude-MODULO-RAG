@@ -30,6 +30,7 @@ public class UserSession {
     private Long consultaIdParaCancelar;
     private String nomeClinicaSelecionada;
     private List<ClinicaDTO> clinicasCache = new ArrayList<>();
+    private String enderecoClinicaSelecionada;
 
     public UserSession(String telefone) {
         this.telefone = telefone;
@@ -201,6 +202,15 @@ public class UserSession {
         this.clinicasCache = clinicasCache;
     }
 
+
+    public String getEnderecoClinicaSelecionada() {
+        return this.enderecoClinicaSelecionada;
+    }
+
+    public void setEnderecoClinicaSelecionada(String enderecoClinicaSelecionada) {
+        this.enderecoClinicaSelecionada = enderecoClinicaSelecionada;
+    }
+    
 
     public Long getConsultaIdParaCancelar() { return consultaIdParaCancelar; }
     
