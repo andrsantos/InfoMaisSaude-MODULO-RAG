@@ -96,51 +96,55 @@ public class TriagemFlowServiceImpl implements TriagemFlowService {
 
             case ESCOLHER_CLINICA:
 
-                 Long clinicaId = null;
+                Long clinicaId = null;
 
-                 if(textoUsuario.startsWith("CLINICA_")){
-
-                    try{
+                if (textoUsuario.startsWith("CLINICA_")) {
+                    try {
                         clinicaId = Long.parseLong(textoUsuario.split("_")[1]);
-                    }
-                    catch(Exception e){
+                    } catch (Exception e) {
                         System.out.println("Falha ao ler ID da clínica");
                     }
-
-                 }  else {
-
+                } else {
                     return new BotResponseDTO("Por favor, selecione uma das opções da lista clicando no botão 'Ver Clínicas' ");
-                 
                 }
 
                 if (clinicaId != null) {
 
-                sessao.setClinicaIdSelecionada(clinicaId);
-                Long finalId = clinicaId;
-                String nomeEncontrado = sessao.getClinicasCache().stream()
-                .filter(c -> c.id().equals(finalId))
-                .findFirst()
-                .map(ClinicaDTO::nome)
-                .orElse("Clínica Info+Saúde"); 
+                    sessao.setClinicaIdSelecionada(clinicaId);
+                    Long finalId = clinicaId;
 
-                 String enderecoEncontrado = sessao.getClinicasCache().stream()
-                .filter(c -> c.id().equals(finalId))
-                .findFirst()
-                .map(ClinicaDTO::endereco)
-                .orElse("Endereço Info+Saúde"); 
+                    String nomeEncontrado = sessao.getClinicasCache().stream()
+                            .filter(c -> c.id().equals(finalId))
+                            .findFirst()
+                            .map(ClinicaDTO::nome)
+                            .orElse("Clínica Info+Saúde");
 
-                sessao.setNomeClinicaSelecionada(nomeEncontrado);
-                sessao.setEnderecoClinicaSelecionada(enderecoEncontrado);
-                
-                sessao.setClinicasCache(new ArrayList<>());
-                sessao.setEstagio(TriagemStage.ESCOLHER_ACAO);
-            
-                return new BotResponseDTO(
-                            "Você selecionou a *" + nomeEncontrado + "*! 🏥\n\nO que você deseja fazer agora?",
-                            List.of("Marcar Consulta", "Cancelar Consulta")
-                );
+                    String enderecoEncontrado = sessao.getClinicasCache().stream()
+                            .filter(c -> c.id().equals(finalId))
+                            .findFirst()
+                            .map(ClinicaDTO::endereco)
+                            .orElse("Endereço não disponível");
+
+                    sessao.setNomeClinicaSelecionada(nomeEncontrado);
+                    sessao.setEnderecoClinicaSelecionada(enderecoEncontrado);
+                    
+                    sessao.setClinicasCache(new ArrayList<>());
+                    sessao.setEstagio(TriagemStage.ESCOLHER_ACAO);
+
+                    String mensagemResposta = String.format(
+                        "Você selecionou a *%s*! 🏥\n" +
+                        "📍 Endereço: %s\n\n" +
+                        "O que você deseja fazer agora?", 
+                        nomeEncontrado, enderecoEncontrado
+                    );
+
+                    return new BotResponseDTO(
+                        mensagemResposta,
+                        List.of("Marcar Consulta", "Cancelar Consulta")
+                    );
+
                 } else {
-                return new BotResponseDTO("Não entendi qual clínica você escolheu. Por favor, tente novamente pela lista.");
+                    return new BotResponseDTO("Não entendi qual clínica você escolheu. Por favor, tente novamente pela lista.");
             }
 
             case ESCOLHER_ACAO:
