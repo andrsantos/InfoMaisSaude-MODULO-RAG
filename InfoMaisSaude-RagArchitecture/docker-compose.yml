@@ -1,26 +1,26 @@
 version: '3.8'
 
 services:
-  db:
+  db-rag: 
     image: pgvector/pgvector:pg16
-    container_name: postgres-vector
+    container_name: postgres-vector-rag
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: InfoMaisSaude-RagArchitecture
     ports:
-      - "5432:5432"
+      - "5434:5432" 
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - ./pgdata_rag:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  app:
+  app-rag:
     build: .
     container_name: infomaissaude-backend-rag
     restart: always
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/InfoMaisSaude-RagArchitecture
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-rag:5432/InfoMaisSaude-RagArchitecture
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -28,20 +28,20 @@ services:
       META_PHONE_ID: ${META_PHONE_ID}
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN}
     depends_on:
-      - db
+      - db-rag
 
-  caddy:
+  caddy-rag:
     image: caddy:latest
-    container_name: caddy-https
+    container_name: caddy-rag-https
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - "81:80"   
+      - "444:443" 
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
+      - caddy_data_rag:/data
     depends_on:
-      - app
+      - app-rag
 
 volumes:
-  caddy_data:
+  caddy_data_rag:
